@@ -1,0 +1,27 @@
+PATIENT INTAKE FORM
+===================
+
+Patient Name: Sarah Johnson
+Date of Birth: 03/15/1988
+Social Security Number: 287-65-4321
+
+Address: 742 Evergreen Terrace, Springfield, IL 62704
+Phone: (555) 234-5678
+Email: sarah.johnson@gmail.com
+
+Emergency Contact: Michael Johnson
+Relationship: Spouse
+Phone: (555) 876-5432
+
+Insurance Provider: BlueCross BlueShield
+Policy Number: BCB-9928374651
+Group Number: GRP-44521
+
+Primary Care Physician: Dr. Robert Chen
+Allergies: Penicillin, Sulfa drugs
+Current Medications: Lisinopril 10mg, Metformin 500mg
+
+Reason for Visit: Annual physical examination
+
+Signature: Sarah Johnson
+Date: 01/15/2025

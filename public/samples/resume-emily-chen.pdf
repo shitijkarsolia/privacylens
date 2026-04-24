@@ -1,0 +1,70 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792]
+   /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>
+endobj
+
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+
+4 0 obj
+<< /Length 580 >>
+stream
+BT
+/F1 16 Tf
+50 740 Td
+(RESUME - Emily Chen) Tj
+/F1 11 Tf
+0 -25 Td
+(Email: emily.chen@protonmail.com | Phone: (415) 555-8923) Tj
+0 -20 Td
+(Address: 2891 Mission Street, San Francisco, CA 94110) Tj
+0 -20 Td
+(LinkedIn: linkedin.com/in/emilychen-dev) Tj
+0 -30 Td
+/F1 13 Tf
+(EXPERIENCE) Tj
+/F1 11 Tf
+0 -22 Td
+(Senior Software Engineer - Stripe Inc.) Tj
+0 -18 Td
+(January 2021 - Present) Tj
+0 -18 Td
+(- Led migration of payment processing pipeline) Tj
+0 -18 Td
+(- Managed team of 5 engineers) Tj
+0 -30 Td
+/F1 13 Tf
+(EDUCATION) Tj
+/F1 11 Tf
+0 -22 Td
+(Stanford University - BS Computer Science, 2018) Tj
+0 -18 Td
+(GPA: 3.87 | SSN: 623-45-8901) Tj
+ET
+endstream
+endobj
+
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000306 00000 n 
+0000000236 00000 n 
+
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+938
+%%EOF

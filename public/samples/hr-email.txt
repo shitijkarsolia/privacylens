@@ -1,0 +1,25 @@
+From: David Martinez <david.martinez@techcorp.io>
+To: HR Department <hr@techcorp.io>
+Subject: Updated Direct Deposit Information
+
+Hi HR Team,
+
+I'd like to update my direct deposit information for payroll:
+
+Employee ID: EMP-20234
+Full Name: David Alexander Martinez
+SSN: 451-78-9023
+
+New Bank Details:
+Bank: Chase Bank
+Routing Number: 021000021
+Account Number: 8834729156
+
+My current address is:
+1847 Oak Boulevard, Apt 12B
+Austin, TX 78701
+
+Please confirm once updated. You can reach me at (512) 555-0147 or on my personal email david.a.martinez@outlook.com.
+
+Thanks,
+David Martinez

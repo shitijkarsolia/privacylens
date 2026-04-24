@@ -290,7 +290,7 @@ export function ChatPage() {
       <div className="flex-1 flex overflow-hidden">
         {/* Chat area */}
         <div className="flex-1 flex flex-col min-w-0">
-          <MessageList messages={messages} loading={loading} />
+          <MessageList messages={messages} loading={loading} onSampleFile={handleFileUpload} />
           <MessageInput
             onSubmit={handleSubmit}
             onTextChange={handleTextChange}
@@ -298,7 +298,7 @@ export function ChatPage() {
             blocked={result?.blocked ?? false}
             result={result}
             scanning={scanning}
-            disabled={loading || showReview || modelStatus.state !== "ready"}
+            disabled={loading || showReview}
             fileScanning={fileScanning}
             fileName={fileName}
             modelLoading={modelStatus.state !== "ready" && modelStatus.state !== "failed"}
