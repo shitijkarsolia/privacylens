@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import type { DetectionResult } from "../types";
+import type { AttachedFile } from "./ChatPage";
 
 interface Props {
   onSubmit: (text: string) => void;
@@ -12,6 +13,8 @@ interface Props {
   fileScanning?: boolean;
   fileName?: string;
   modelLoading?: boolean;
+  attachedFile?: AttachedFile | null;
+  onRemoveAttachment?: () => void;
 }
 
 export function MessageInput({
@@ -25,6 +28,8 @@ export function MessageInput({
   fileScanning,
   fileName,
   modelLoading,
+  attachedFile,
+  onRemoveAttachment,
 }: Props) {
   const [text, setText] = useState("");
   const [dragOver, setDragOver] = useState(false);
@@ -44,13 +49,13 @@ export function MessageInput({
   );
 
   const handleSubmit = useCallback(() => {
-    if (!text.trim() || disabled) return;
+    if ((!text.trim() && !attachedFile) || disabled) return;
     onSubmit(text);
     setText("");
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
     }
-  }, [text, disabled, onSubmit]);
+  }, [text, disabled, onSubmit, attachedFile]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -91,6 +96,7 @@ export function MessageInput({
 
   const entityCount = result?.entities.length ?? 0;
   const showWarning = entityCount > 0 && text.trim().length > 0;
+  const canSend = (text.trim() || attachedFile) && !disabled && !scanning;
 
   return (
     <div
@@ -143,6 +149,36 @@ export function MessageInput({
           </div>
         )}
 
+        {/* Attached file chip */}
+        {attachedFile && (
+          <div className="mb-2 flex items-center gap-2">
+            <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-medium ${
+              attachedFile.redacted
+                ? "bg-[var(--color-accent)]/5 border-[var(--color-accent)]/20 text-[var(--color-accent)]"
+                : "bg-[var(--color-canvas)] border-[var(--color-border)] text-[var(--color-text)]"
+            }`}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <path d="M14 2v6h6" />
+              </svg>
+              <span>{attachedFile.name}</span>
+              {attachedFile.redacted && (
+                <span className="px-1.5 py-0.5 rounded bg-[var(--color-accent)]/10 text-[10px] uppercase tracking-wider">
+                  redacted
+                </span>
+              )}
+              <button
+                onClick={onRemoveAttachment}
+                className="w-4 h-4 rounded-full hover:bg-black/10 flex items-center justify-center transition-colors"
+              >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                  <path d="M18 6 6 18M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="flex items-end gap-2">
           <input
             ref={fileInputRef}
@@ -168,7 +204,7 @@ export function MessageInput({
               value={text}
               onChange={(e) => handleChange(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Type a message or drop a file..."
+              placeholder={attachedFile ? `Ask about ${attachedFile.name}...` : "Type a message or drop a file..."}
               rows={1}
               className="w-full resize-none rounded-2xl border border-[var(--color-border)] bg-[var(--color-canvas)] px-4 py-3 text-[15px] leading-relaxed text-[var(--color-text)] placeholder:text-[var(--color-text-secondary)]/50 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/20 focus:border-[var(--color-accent)]/40 transition-all"
             />
@@ -176,11 +212,11 @@ export function MessageInput({
 
           <button
             onClick={handleSubmit}
-            disabled={!text.trim() || disabled || scanning}
+            disabled={!canSend}
             className={`flex-shrink-0 w-11 h-11 rounded-full flex items-center justify-center transition-all active:scale-95 ${
               blocked && text.trim()
                 ? "bg-[#E54D2E] text-white hover:opacity-90"
-                : text.trim() && !disabled
+                : canSend
                   ? "bg-[var(--color-text)] text-white hover:opacity-90"
                   : "bg-[var(--color-border)] text-[var(--color-text-secondary)] cursor-not-allowed"
             }`}
@@ -196,7 +232,7 @@ export function MessageInput({
         </div>
 
         <p className="mt-2 text-[11px] text-[var(--color-text-secondary)]/60 text-center font-mono">
-          All PII detection runs locally in your browser. Nothing leaves your device until you approve.
+          All PII detection runs locally on this server. Nothing leaves until you approve.
         </p>
       </div>
     </div>

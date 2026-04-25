@@ -12,21 +12,28 @@ import { addAuditEntry, createAuditEntry } from "../lib/audit-log";
 import { scanPDF } from "../lib/pdf-scanner";
 import { scanImage } from "../lib/image-scanner";
 import {
-  renderPDFToCanvas,
-  getPDFTextPositions,
+  renderPDFPages,
+  getAllPDFTextPositions,
   createObfuscatedCanvas,
   renderImageToCanvas,
   createObfuscatedImageCanvas,
   canvasToDataURL,
+  generateRedactedPDFBlob,
 } from "../lib/visual-obfuscator";
 import type { PIIEntity } from "../types";
 
 type ScanStatus = "idle" | "scanning" | "clean" | "blocked";
 
 export interface FilePreview {
-  beforeSrc: string;
-  afterSrc: string;
+  pages: { beforeSrc: string; afterSrc: string }[];
   name: string;
+  obfuscatedCanvases?: HTMLCanvasElement[];
+}
+
+export interface AttachedFile {
+  name: string;
+  text: string;
+  redacted: boolean;
 }
 
 export function ChatPage() {
@@ -42,6 +49,7 @@ export function ChatPage() {
   const [fileName, setFileName] = useState("");
   const [scanStatus, setScanStatus] = useState<ScanStatus>("idle");
   const [filePreview, setFilePreview] = useState<FilePreview | null>(null);
+  const [attachedFile, setAttachedFile] = useState<AttachedFile | null>(null);
 
   const handleTextChange = useCallback(
     (text: string) => {
@@ -53,8 +61,24 @@ export function ChatPage() {
 
   const handleSubmit = useCallback(
     async (text: string) => {
-      setPendingText(text);
+      const fullText = attachedFile
+        ? `[Attached: ${attachedFile.name}${attachedFile.redacted ? " (redacted)" : ""}]\n\n${attachedFile.text}\n\n---\n\n${text}`
+        : text;
+
+      setPendingText(fullText);
       setScanStatus("scanning");
+
+      // If file is already attached (already scanned), just send
+      if (attachedFile) {
+        setScanStatus("clean");
+        addAuditEntry(createAuditEntry("clean_send", []));
+        send(fullText);
+        setAttachedFile(null);
+        clear();
+        setTimeout(() => setScanStatus("idle"), 2000);
+        return;
+      }
+
       const detection = await scanFull(text);
 
       if (detection.blocked) {
@@ -68,7 +92,7 @@ export function ChatPage() {
         setTimeout(() => setScanStatus("idle"), 2000);
       }
     },
-    [scanFull, send, clear]
+    [scanFull, send, clear, attachedFile]
   );
 
   const handleFileUpload = useCallback(
@@ -105,7 +129,7 @@ export function ChatPage() {
           setFileScanning(false);
           setFileName("");
           setScanStatus("clean");
-          send(`[Uploaded ${file.name} — no text content detected]`);
+          setAttachedFile({ name: file.name, text: "[No text content detected]", redacted: false });
           setTimeout(() => setScanStatus("idle"), 2000);
           return;
         }
@@ -114,19 +138,18 @@ export function ChatPage() {
         const detection = await scanFull(scanResult.text);
 
         if (detection.blocked) {
-          // Generate visual before/after for PDFs and images
           if (isPDF) {
             try {
-              const originalCanvas = await renderPDFToCanvas(file);
-              const textPositions = await getPDFTextPositions(file);
-              const obfuscatedCanvas = createObfuscatedCanvas(
-                originalCanvas, textPositions, detection.entities, scanResult.text
+              const originalCanvases = await renderPDFPages(file);
+              const allTextPositions = await getAllPDFTextPositions(file);
+              const obfuscatedCanvases = originalCanvases.map((canvas, i) =>
+                createObfuscatedCanvas(canvas, allTextPositions[i] || [], detection.entities, scanResult.text)
               );
-              setFilePreview({
-                beforeSrc: canvasToDataURL(originalCanvas),
-                afterSrc: canvasToDataURL(obfuscatedCanvas),
-                name: file.name,
-              });
+              const pages = originalCanvases.map((canvas, i) => ({
+                beforeSrc: canvasToDataURL(canvas),
+                afterSrc: canvasToDataURL(obfuscatedCanvases[i]),
+              }));
+              setFilePreview({ pages, name: file.name, obfuscatedCanvases });
             } catch (e) {
               console.error("PDF visual obfuscation failed:", e);
             }
@@ -137,9 +160,9 @@ export function ChatPage() {
                 originalCanvas, scanResult.text, detection.entities
               );
               setFilePreview({
-                beforeSrc: canvasToDataURL(originalCanvas),
-                afterSrc: canvasToDataURL(obfuscatedCanvas),
+                pages: [{ beforeSrc: canvasToDataURL(originalCanvas), afterSrc: canvasToDataURL(obfuscatedCanvas) }],
                 name: file.name,
+                obfuscatedCanvases: [obfuscatedCanvas],
               });
             } catch (e) {
               console.error("Image visual obfuscation failed:", e);
@@ -151,46 +174,43 @@ export function ChatPage() {
         } else {
           setScanStatus("clean");
           addAuditEntry(createAuditEntry("clean_send", []));
-          send(`[Content from ${file.name}]\n\n${scanResult.text}`);
+          setAttachedFile({ name: file.name, text: scanResult.text, redacted: false });
           clear();
           setTimeout(() => setScanStatus("idle"), 2000);
         }
       } catch (err: any) {
         console.error("File scan error:", err);
         setScanStatus("idle");
-        send(`[Failed to process ${file.name}: ${err?.message || "Unknown error"}]`);
       } finally {
         setFileScanning(false);
         setFileName("");
       }
     },
-    [send, clear, scanFull]
+    [clear, scanFull]
   );
 
-  const handleSendRedacted = useCallback(
+  const handleAttachRedacted = useCallback(
     (redactedText: string) => {
       const categories = result?.entities.map((e) => e.category) ?? [];
       addAuditEntry(createAuditEntry("redacted", categories));
-      send(redactedText, pendingText);
+      setAttachedFile({ name: filePreview?.name || fileName || "document", text: redactedText, redacted: true });
       setShowReview(false);
       setPendingText("");
-      setFilePreview(null);
       clear();
       setScanStatus("idle");
     },
-    [result, pendingText, send, clear]
+    [result, filePreview, fileName, clear]
   );
 
-  const handleSendOriginal = useCallback(() => {
+  const handleAttachOriginal = useCallback(() => {
     const categories = result?.entities.map((e) => e.category) ?? [];
     addAuditEntry(createAuditEntry("approved_override", categories));
-    send(pendingText);
+    setAttachedFile({ name: filePreview?.name || fileName || "document", text: pendingText, redacted: false });
     setShowReview(false);
     setPendingText("");
-    setFilePreview(null);
     clear();
     setScanStatus("idle");
-  }, [result, pendingText, send, clear]);
+  }, [result, pendingText, filePreview, fileName, clear]);
 
   const handleCancelReview = useCallback(() => {
     setShowReview(false);
@@ -199,13 +219,32 @@ export function ChatPage() {
     setScanStatus("idle");
   }, []);
 
+  const handleRemoveAttachment = useCallback(() => {
+    setAttachedFile(null);
+  }, []);
+
+  const handleDownloadRedacted = useCallback(async () => {
+    if (!filePreview?.obfuscatedCanvases) return;
+    try {
+      const blob = await generateRedactedPDFBlob(filePreview.obfuscatedCanvases);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `redacted-${filePreview.name.replace(/\.[^.]+$/, "")}.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error("Download failed:", e);
+    }
+  }, [filePreview]);
+
   const handleNewChat = useCallback(() => {
     setShowReview(false);
     setPendingText("");
     setFilePreview(null);
+    setAttachedFile(null);
     setScanStatus("idle");
     clear();
-    // Reset messages by reloading — simplest approach
     window.location.reload();
   }, [clear]);
 
@@ -301,7 +340,7 @@ export function ChatPage() {
 
       {/* Scan Status Bar */}
       <AnimatePresence>
-        {scanStatus !== "idle" && (
+        {scanStatus !== "idle" && scanStatus !== "scanning" && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
@@ -312,26 +351,18 @@ export function ChatPage() {
             <div className="flex justify-center px-4 pb-2">
               <div
                 className={`w-full max-w-4xl px-5 py-3 rounded-2xl flex items-center gap-3 text-sm font-medium transition-colors ${
-                  scanStatus === "scanning"
-                    ? "bg-[#F5A623]/10 border border-[#F5A623]/20 text-[#9A6700]"
-                    : scanStatus === "blocked"
-                      ? "bg-[#E54D2E]/10 border border-[#E54D2E]/20 text-[#E54D2E]"
-                      : "bg-[#12A594]/10 border border-[#12A594]/20 text-[#12A594]"
+                  scanStatus === "blocked"
+                    ? "bg-[#E54D2E]/10 border border-[#E54D2E]/20 text-[#E54D2E]"
+                    : "bg-[#12A594]/10 border border-[#12A594]/20 text-[#12A594]"
                 }`}
               >
-                {scanStatus === "scanning" && (
-                  <>
-                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin flex-shrink-0" />
-                    <span>Scanning for personal data{modelStatus.state === "ready" ? " with AI model" : ""}...</span>
-                  </>
-                )}
                 {scanStatus === "blocked" && (
                   <>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="flex-shrink-0">
                       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                     </svg>
                     <span>
-                      PII detected — {result?.entities.length} personal data item{(result?.entities.length ?? 0) !== 1 ? "s" : ""} found. Review required before sending.
+                      PII detected — {result?.entities.length} personal data item{(result?.entities.length ?? 0) !== 1 ? "s" : ""} found. Review required before attaching.
                     </span>
                   </>
                 )}
@@ -365,6 +396,8 @@ export function ChatPage() {
             fileScanning={fileScanning}
             fileName={fileName}
             modelLoading={modelStatus.state !== "ready" && modelStatus.state !== "failed"}
+            attachedFile={attachedFile}
+            onRemoveAttachment={handleRemoveAttachment}
           />
         </div>
 
@@ -373,10 +406,11 @@ export function ChatPage() {
           <ReviewPanel
             text={pendingText}
             result={result}
-            onSendRedacted={handleSendRedacted}
-            onSendOriginal={handleSendOriginal}
+            onAttachRedacted={handleAttachRedacted}
+            onAttachOriginal={handleAttachOriginal}
             onCancel={handleCancelReview}
             filePreview={filePreview}
+            onDownloadRedacted={filePreview?.obfuscatedCanvases ? handleDownloadRedacted : undefined}
           />
         )}
 

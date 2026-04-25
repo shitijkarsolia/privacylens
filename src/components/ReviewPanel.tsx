@@ -28,19 +28,21 @@ const SEVERITY_CHECK: Record<string, string> = {
 interface Props {
   text: string;
   result: DetectionResult;
-  onSendRedacted: (redactedText: string) => void;
-  onSendOriginal: () => void;
+  onAttachRedacted: (redactedText: string) => void;
+  onAttachOriginal: () => void;
   onCancel: () => void;
   filePreview?: FilePreview | null;
+  onDownloadRedacted?: () => void;
 }
 
 export function ReviewPanel({
   text,
   result,
-  onSendRedacted,
-  onSendOriginal,
+  onAttachRedacted,
+  onAttachOriginal,
   onCancel,
   filePreview,
+  onDownloadRedacted,
 }: Props) {
   const [selectedEntities, setSelectedEntities] = useState<Set<number>>(
     () => new Set(result.entities.map((_, i) => i))
@@ -61,7 +63,7 @@ export function ReviewPanel({
 
   const handleAutoRedact = () => {
     const redacted = redactSelective(text, result.entities, selectedEntities);
-    onSendRedacted(redacted);
+    onAttachRedacted(redacted);
   };
 
   const previewText =
@@ -124,12 +126,12 @@ export function ReviewPanel({
         {/* Scrollable content */}
         <div className="flex-1 overflow-y-auto scrollbar-thin">
           {/* Before/After visual comparison for files */}
-          {filePreview && (
+          {filePreview && filePreview.pages.length > 0 && (
             <div className="px-5 py-4 border-b border-[var(--color-border)]">
               <BeforeAfterSlider
-                beforeSrc={filePreview.beforeSrc}
-                afterSrc={filePreview.afterSrc}
+                pages={filePreview.pages}
                 label={`Original vs Redacted — ${filePreview.name}`}
+                onDownloadRedacted={onDownloadRedacted}
               />
             </div>
           )}
@@ -223,9 +225,9 @@ export function ReviewPanel({
             className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-full bg-[var(--color-accent)] text-white text-sm font-semibold transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+              <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
             </svg>
-            Redact & Send ({selectedEntities.size} item{selectedEntities.size !== 1 ? "s" : ""})
+            Attach Redacted ({selectedEntities.size} item{selectedEntities.size !== 1 ? "s" : ""} removed)
           </button>
 
           {!showOverrideConfirm ? (
@@ -233,16 +235,16 @@ export function ReviewPanel({
               onClick={() => setShowOverrideConfirm(true)}
               className="w-full px-5 py-2.5 rounded-full border border-[var(--color-border)] text-sm text-[var(--color-text-secondary)] hover:bg-[var(--color-canvas)] transition-colors"
             >
-              Send original anyway
+              Attach original anyway
             </button>
           ) : (
             <div className="bg-[#E54D2E]/5 border border-[#E54D2E]/20 rounded-xl p-3">
               <p className="text-xs text-[#E54D2E] mb-2 font-medium">
-                This will send your personal information to the AI service. Are you sure?
+                This will attach the document with personal information included. Are you sure?
               </p>
               <div className="flex gap-2">
                 <button
-                  onClick={onSendOriginal}
+                  onClick={onAttachOriginal}
                   className="flex-1 px-3 py-2 rounded-lg bg-[#E54D2E] text-white text-xs font-semibold hover:opacity-90 transition-opacity"
                 >
                   I understand the risk

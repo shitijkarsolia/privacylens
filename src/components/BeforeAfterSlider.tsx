@@ -2,14 +2,18 @@ import { useState, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
 
 interface Props {
-  beforeSrc: string;
-  afterSrc: string;
+  pages: { beforeSrc: string; afterSrc: string }[];
   label?: string;
+  onDownloadRedacted?: () => void;
 }
 
-export function BeforeAfterSlider({ beforeSrc, afterSrc, label }: Props) {
+export function BeforeAfterSlider({ pages, label, onDownloadRedacted }: Props) {
   const [position, setPosition] = useState(50);
+  const [currentPage, setCurrentPage] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const totalPages = pages.length;
+  const current = pages[currentPage];
 
   const getPosition = useCallback((clientX: number) => {
     if (!containerRef.current) return 50;
@@ -34,6 +38,8 @@ export function BeforeAfterSlider({ beforeSrc, afterSrc, label }: Props) {
     [getPosition]
   );
 
+  if (!current) return null;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -42,9 +48,22 @@ export function BeforeAfterSlider({ beforeSrc, afterSrc, label }: Props) {
       className="space-y-2"
     >
       {label && (
-        <p className="text-xs font-mono text-[var(--color-text-secondary)] uppercase tracking-wider">
-          {label}
-        </p>
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-mono text-[var(--color-text-secondary)] uppercase tracking-wider">
+            {label}
+          </p>
+          {onDownloadRedacted && (
+            <button
+              onClick={onDownloadRedacted}
+              className="flex items-center gap-1.5 text-xs font-medium text-[var(--color-accent)] hover:underline"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
+              </svg>
+              Download redacted
+            </button>
+          )}
+        </div>
       )}
       <div
         ref={containerRef}
@@ -55,7 +74,7 @@ export function BeforeAfterSlider({ beforeSrc, afterSrc, label }: Props) {
       >
         {/* After (redacted) — full background */}
         <img
-          src={afterSrc}
+          src={current.afterSrc}
           alt="Redacted"
           className="absolute inset-0 w-full h-full object-contain pointer-events-none"
           draggable={false}
@@ -67,7 +86,7 @@ export function BeforeAfterSlider({ beforeSrc, afterSrc, label }: Props) {
           style={{ clipPath: `inset(0 ${100 - position}% 0 0)` }}
         >
           <img
-            src={beforeSrc}
+            src={current.beforeSrc}
             alt="Original"
             className="absolute inset-0 w-full h-full object-contain"
             draggable={false}
@@ -93,6 +112,33 @@ export function BeforeAfterSlider({ beforeSrc, afterSrc, label }: Props) {
         <div className="absolute top-3 right-3 px-2.5 py-1 rounded-lg bg-black/60 backdrop-blur-sm text-white text-[11px] font-mono pointer-events-none">
           Redacted
         </div>
+
+        {/* Page navigation */}
+        {totalPages > 1 && (
+          <>
+            <button
+              onClick={(e) => { e.stopPropagation(); setCurrentPage((p) => Math.max(0, p - 1)); }}
+              disabled={currentPage === 0}
+              className="absolute left-2 bottom-3 w-8 h-8 rounded-lg bg-black/60 backdrop-blur-sm text-white flex items-center justify-center hover:bg-black/80 transition-colors disabled:opacity-30 disabled:cursor-not-allowed z-10"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+            </button>
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-lg bg-black/60 backdrop-blur-sm text-white text-[11px] font-mono pointer-events-none z-10">
+              {currentPage + 1} / {totalPages}
+            </div>
+            <button
+              onClick={(e) => { e.stopPropagation(); setCurrentPage((p) => Math.min(totalPages - 1, p + 1)); }}
+              disabled={currentPage === totalPages - 1}
+              className="absolute right-2 bottom-3 w-8 h-8 rounded-lg bg-black/60 backdrop-blur-sm text-white flex items-center justify-center hover:bg-black/80 transition-colors disabled:opacity-30 disabled:cursor-not-allowed z-10"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+            </button>
+          </>
+        )}
       </div>
     </motion.div>
   );
