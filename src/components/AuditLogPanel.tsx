@@ -28,6 +28,11 @@ export function AuditLogPanel({ onClose }: Props) {
     return () => clearInterval(interval);
   }, []);
 
+  const handleClear = () => {
+    localStorage.removeItem("privacylens_audit_log");
+    setSummary(getAuditSummary());
+  };
+
   const categoryEntries = Object.entries(summary.byCategory).filter(
     ([, count]) => count && count > 0
   );
@@ -84,6 +89,15 @@ export function AuditLogPanel({ onClose }: Props) {
           <p className="text-sm text-[var(--color-text-secondary)] text-center">
             No PII detected yet. Start chatting to see your privacy stats.
           </p>
+        )}
+
+        {categoryEntries.length > 0 && (
+          <button
+            onClick={handleClear}
+            className="mt-4 w-full px-3 py-2 rounded-lg border border-[var(--color-border)] text-xs text-[var(--color-text-secondary)] hover:bg-[var(--color-canvas)] transition-colors"
+          >
+            Clear log
+          </button>
         )}
 
         <div className="mt-6 text-center">
