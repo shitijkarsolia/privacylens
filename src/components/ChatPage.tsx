@@ -269,6 +269,36 @@ export function ChatPage() {
         </div>
       </div>
 
+      {/* Scanning Overlay */}
+      <AnimatePresence>
+        {(scanStatus === "scanning" || fileScanning) && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 200, damping: 20 }}
+              className="bg-[var(--color-surface)] rounded-2xl px-10 py-8 shadow-[0_20px_60px_rgba(0,0,0,0.15)] border border-[var(--color-border)] text-center max-w-sm"
+            >
+              <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-[var(--color-accent)]/10 flex items-center justify-center">
+                <div className="w-7 h-7 border-3 border-[var(--color-accent)] border-t-transparent rounded-full animate-spin" />
+              </div>
+              <h3 className="text-lg font-semibold tracking-tight text-[var(--color-text)] mb-1">
+                Scanning for personal data
+              </h3>
+              <p className="text-sm text-[var(--color-text-secondary)]">
+                {fileName ? `Analyzing ${fileName}...` : "Running AI model detection..."}
+              </p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Scan Status Bar */}
       <AnimatePresence>
         {scanStatus !== "idle" && (

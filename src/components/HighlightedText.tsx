@@ -52,7 +52,7 @@ export function HighlightedText({ text, entities }: Props) {
         return (
           <mark
             key={i}
-            className={`${classes} border rounded px-1 py-0.5 font-medium text-sm no-underline`}
+            className={`${classes} border rounded px-1 py-0.5 font-medium text-sm underline decoration-2 decoration-current`}
             title={`${seg.highlighted.category} (${Math.round(seg.highlighted.confidence * 100)}%)`}
           >
             {seg.text}

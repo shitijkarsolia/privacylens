@@ -43,7 +43,7 @@ export function AuditLogPanel({ onClose }: Props) {
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 20 }}
       transition={{ type: "spring", stiffness: 100, damping: 20 }}
-      className="border-l border-[var(--color-border)] bg-[var(--color-surface)] w-full md:w-[320px] flex flex-col h-full"
+      className="fixed right-0 top-0 bottom-0 z-40 border-l border-[var(--color-border)] bg-[var(--color-surface)] w-full md:w-[320px] flex flex-col h-full shadow-[-8px_0_30px_rgba(0,0,0,0.08)]"
     >
       <div className="px-5 py-4 border-b border-[var(--color-border)] flex items-center justify-between">
         <h3 className="text-sm font-semibold text-[var(--color-text)]">

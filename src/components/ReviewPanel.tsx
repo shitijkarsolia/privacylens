@@ -19,6 +19,12 @@ const SEVERITY_DOT: Record<string, string> = {
   low: "bg-[#12A594]",
 };
 
+const SEVERITY_CHECK: Record<string, string> = {
+  high: "border-[#E54D2E] bg-[#E54D2E]",
+  medium: "border-[#F5A623] bg-[#F5A623]",
+  low: "border-[#12A594] bg-[#12A594]",
+};
+
 interface Props {
   text: string;
   result: DetectionResult;
@@ -70,7 +76,7 @@ export function ReviewPanel({
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, x: 20 }}
         transition={{ type: "spring", stiffness: 100, damping: 20 }}
-        className="border-l border-[var(--color-border)] bg-[var(--color-surface)] w-full md:w-[560px] flex flex-col h-full overflow-hidden"
+        className="fixed right-0 top-0 bottom-0 z-40 border-l border-[var(--color-border)] bg-[var(--color-surface)] w-full md:w-[560px] flex flex-col h-full overflow-hidden shadow-[-8px_0_30px_rgba(0,0,0,0.08)]"
       >
         {/* Header */}
         <div className="px-5 py-4 border-b border-[var(--color-border)] flex items-center justify-between">
@@ -161,14 +167,14 @@ export function ReviewPanel({
                     onClick={() => toggleEntity(i)}
                     className={`w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all ${
                       isSelected
-                        ? "border-[var(--color-accent)] bg-[var(--color-accent)]/5"
+                        ? `${SEVERITY_PILL[severity]}`
                         : "border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-canvas)]"
                     }`}
                   >
                     <div
                       className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
                         isSelected
-                          ? "border-[var(--color-accent)] bg-[var(--color-accent)]"
+                          ? `${SEVERITY_CHECK[severity]}`
                           : "border-[var(--color-border)]"
                       }`}
                     >
