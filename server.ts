@@ -40,6 +40,43 @@ async function loadPIIModel() {
 
 loadPIIModel();
 
+// Merge adjacent entities that are fragments of the same PII
+function mergeAdjacentEntities(entities: any[], text: string): any[] {
+  if (entities.length <= 1) return entities;
+
+  const sorted = [...entities].sort((a, b) => a.start - b.start);
+  const merged: any[] = [];
+
+  for (const entity of sorted) {
+    const last = merged[merged.length - 1];
+    if (!last) {
+      merged.push({ ...entity });
+      continue;
+    }
+
+    // Merge if adjacent (gap <= 3 chars of whitespace/punctuation) and compatible category
+    const gap = entity.start - last.end;
+    const gapText = gap > 0 ? text.slice(last.end, entity.start) : "";
+    const isAdjacent = gap <= 3 && /^[\s\-\/.,]*$/.test(gapText);
+    const isCompatible =
+      last.category === entity.category ||
+      (["account_number", "private_phone", "secret"].includes(last.category) &&
+        ["account_number", "private_phone", "secret"].includes(entity.category));
+
+    if (isAdjacent && isCompatible) {
+      const newEnd = Math.max(last.end, entity.end);
+      last.end = newEnd;
+      last.text = text.slice(last.start, newEnd).trim();
+      last.confidence = Math.max(last.confidence, entity.confidence);
+    } else {
+      merged.push({ ...entity });
+    }
+  }
+
+  // Filter out very low confidence fragments
+  return merged.filter((e) => e.confidence > 0.4 || e.text.length > 3);
+}
+
 // --- PII Scan Endpoint ---
 app.get("/api/model-status", (_req, res) => {
   if (modelReady) {
@@ -67,7 +104,7 @@ app.post("/api/scan", async (req, res) => {
 
     const results = await classifier(text, { aggregation_strategy: "simple" });
 
-    const entities = (results as any[]).map((r: any) => {
+    const rawEntities = (results as any[]).map((r: any) => {
       let category = "secret";
       const eg = (r.entity_group || r.entity || "").toLowerCase();
       if (eg.includes("person")) category = "private_person";
@@ -103,6 +140,9 @@ app.post("/api/scan", async (req, res) => {
         source: "model",
       };
     });
+
+    // Merge adjacent/overlapping entities of compatible categories
+    const entities = mergeAdjacentEntities(rawEntities, text);
 
     res.json({ entities });
   } catch (err: any) {

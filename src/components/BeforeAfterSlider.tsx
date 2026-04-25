@@ -10,44 +10,28 @@ interface Props {
 export function BeforeAfterSlider({ beforeSrc, afterSrc, label }: Props) {
   const [position, setPosition] = useState(50);
   const containerRef = useRef<HTMLDivElement>(null);
-  const dragging = useRef(false);
 
-  const updatePosition = useCallback((clientX: number) => {
-    if (!containerRef.current) return;
+  const getPosition = useCallback((clientX: number) => {
+    if (!containerRef.current) return 50;
     const rect = containerRef.current.getBoundingClientRect();
-    const x = clientX - rect.left;
-    const pct = Math.max(0, Math.min(100, (x / rect.width) * 100));
-    setPosition(pct);
+    return Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
   }, []);
 
-  const handleMouseDown = useCallback(() => {
-    dragging.current = true;
-  }, []);
-
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent) => {
-      if (!dragging.current) return;
-      updatePosition(e.clientX);
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      e.preventDefault();
+      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+      setPosition(getPosition(e.clientX));
     },
-    [updatePosition]
+    [getPosition]
   );
 
-  const handleMouseUp = useCallback(() => {
-    dragging.current = false;
-  }, []);
-
-  const handleTouchMove = useCallback(
-    (e: React.TouchEvent) => {
-      updatePosition(e.touches[0].clientX);
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (e.buttons === 0) return;
+      setPosition(getPosition(e.clientX));
     },
-    [updatePosition]
-  );
-
-  const handleClick = useCallback(
-    (e: React.MouseEvent) => {
-      updatePosition(e.clientX);
-    },
-    [updatePosition]
+    [getPosition]
   );
 
   return (
@@ -64,54 +48,49 @@ export function BeforeAfterSlider({ beforeSrc, afterSrc, label }: Props) {
       )}
       <div
         ref={containerRef}
-        className="relative w-full aspect-[4/3] rounded-xl overflow-hidden border border-[var(--color-border)] cursor-col-resize select-none bg-[var(--color-canvas)]"
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-        onTouchMove={handleTouchMove}
-        onClick={handleClick}
+        className="relative w-full aspect-[4/3] rounded-xl overflow-hidden border border-[var(--color-border)] select-none bg-[var(--color-canvas)] touch-none"
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        style={{ cursor: "col-resize" }}
       >
         {/* After (redacted) — full background */}
         <img
           src={afterSrc}
           alt="Redacted"
-          className="absolute inset-0 w-full h-full object-contain"
+          className="absolute inset-0 w-full h-full object-contain pointer-events-none"
           draggable={false}
         />
 
         {/* Before (original) — clipped */}
         <div
-          className="absolute inset-0 overflow-hidden"
-          style={{ width: `${position}%` }}
+          className="absolute inset-0 overflow-hidden pointer-events-none"
+          style={{ clipPath: `inset(0 ${100 - position}% 0 0)` }}
         >
           <img
             src={beforeSrc}
             alt="Original"
             className="absolute inset-0 w-full h-full object-contain"
-            style={{ width: containerRef.current?.offsetWidth || "100%" }}
             draggable={false}
           />
         </div>
 
         {/* Divider line */}
         <div
-          className="absolute top-0 bottom-0 w-0.5 bg-white shadow-[0_0_8px_rgba(0,0,0,0.3)]"
-          style={{ left: `${position}%`, transform: "translateX(-50%)" }}
+          className="absolute top-0 bottom-0 w-0.5 bg-white pointer-events-none"
+          style={{ left: `${position}%`, transform: "translateX(-50%)", boxShadow: "0 0 8px rgba(0,0,0,0.3)" }}
         >
-          {/* Handle */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white shadow-[0_2px_8px_rgba(0,0,0,0.2)] flex items-center justify-center">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2F3437" strokeWidth="2.5">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white flex items-center justify-center" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.25)" }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2F3437" strokeWidth="2.5">
               <path d="M8 4l-6 8 6 8M16 4l6 8-6 8" />
             </svg>
           </div>
         </div>
 
         {/* Labels */}
-        <div className="absolute top-3 left-3 px-2.5 py-1 rounded-lg bg-black/60 backdrop-blur-sm text-white text-[11px] font-mono">
+        <div className="absolute top-3 left-3 px-2.5 py-1 rounded-lg bg-black/60 backdrop-blur-sm text-white text-[11px] font-mono pointer-events-none">
           Original
         </div>
-        <div className="absolute top-3 right-3 px-2.5 py-1 rounded-lg bg-black/60 backdrop-blur-sm text-white text-[11px] font-mono">
+        <div className="absolute top-3 right-3 px-2.5 py-1 rounded-lg bg-black/60 backdrop-blur-sm text-white text-[11px] font-mono pointer-events-none">
           Redacted
         </div>
       </div>

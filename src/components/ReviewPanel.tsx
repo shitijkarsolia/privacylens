@@ -70,7 +70,7 @@ export function ReviewPanel({
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, x: 20 }}
         transition={{ type: "spring", stiffness: 100, damping: 20 }}
-        className="border-l border-[var(--color-border)] bg-[var(--color-surface)] w-full md:w-[480px] flex flex-col h-full overflow-hidden"
+        className="border-l border-[var(--color-border)] bg-[var(--color-surface)] w-full md:w-[560px] flex flex-col h-full overflow-hidden"
       >
         {/* Header */}
         <div className="px-5 py-4 border-b border-[var(--color-border)] flex items-center justify-between">

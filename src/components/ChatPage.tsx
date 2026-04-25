@@ -199,6 +199,16 @@ export function ChatPage() {
     setScanStatus("idle");
   }, []);
 
+  const handleNewChat = useCallback(() => {
+    setShowReview(false);
+    setPendingText("");
+    setFilePreview(null);
+    setScanStatus("idle");
+    clear();
+    // Reset messages by reloading — simplest approach
+    window.location.reload();
+  }, [clear]);
+
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
@@ -220,8 +230,31 @@ export function ChatPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
             <ModelStatus status={modelStatus} />
+            <button
+              onClick={handleNewChat}
+              className="w-9 h-9 rounded-xl hover:bg-[var(--color-canvas)] flex items-center justify-center transition-colors text-[var(--color-text-secondary)]"
+              title="New chat"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+            </button>
+            {result && result.entities.length > 0 && !showReview && (
+              <button
+                onClick={() => setShowReview(true)}
+                className="w-9 h-9 rounded-xl hover:bg-[var(--color-canvas)] flex items-center justify-center transition-colors text-[#E54D2E] relative"
+                title="Open PII review panel"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                </svg>
+                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-[#E54D2E] text-white text-[9px] font-bold flex items-center justify-center">
+                  {result.entities.length}
+                </span>
+              </button>
+            )}
             <button
               onClick={() => setShowAuditLog(!showAuditLog)}
               className="w-9 h-9 rounded-xl hover:bg-[var(--color-canvas)] flex items-center justify-center transition-colors text-[var(--color-text-secondary)]"
