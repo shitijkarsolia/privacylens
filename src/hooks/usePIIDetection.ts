@@ -10,8 +10,7 @@ export function usePIIDetection(
   const [scanning, setScanning] = useState(false);
 
   const scanInstant = useCallback((_text: string) => {
-    // AI-model only — no instant regex scanning
-    // Full scan happens on submit
+    // AI-model only — no instant scanning
   }, []);
 
   const scanFull = useCallback(

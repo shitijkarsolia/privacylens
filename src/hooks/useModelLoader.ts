@@ -1,6 +1,24 @@
 import { useState, useCallback, useEffect } from "react";
 import type { ModelStatus, PIIEntity, PIICategory } from "../types";
 
+const MODEL_ID = "Qwen3-4B-q4f16_1-MLC";
+
+const SYSTEM_PROMPT = `You are a PII (Personally Identifiable Information) detection engine. Given text, identify ALL PII entities and return them as a JSON array.
+
+Each entity must have:
+- "type": one of "private_person", "private_email", "private_phone", "private_address", "private_date", "private_url", "account_number", "secret"
+- "text": the exact text from the input that contains PII
+
+Rules:
+- Return ONLY a JSON array, no other text
+- If no PII found, return []
+- Be thorough — catch names, emails, phones, addresses, SSNs, credit cards, dates of birth, account numbers, API keys
+- SSNs and credit card numbers are "account_number"
+- API keys, passwords, tokens are "secret"
+
+Example input: "Contact John Smith at john@test.com or 555-123-4567"
+Example output: [{"type":"private_person","text":"John Smith"},{"type":"private_email","text":"john@test.com"},{"type":"private_phone","text":"555-123-4567"}]`;
+
 export function useModelLoader() {
   const [status, setStatus] = useState<ModelStatus>({ state: "idle" });
   const [classifyFn, setClassifyFn] = useState<
@@ -11,77 +29,45 @@ export function useModelLoader() {
     setStatus({ state: "downloading", progress: 0 });
 
     try {
-      const { pipeline, env } = await import("@huggingface/transformers");
+      const webllm = await import("@mlc-ai/web-llm");
 
-      // Enable browser caching — model persists in Cache API / IndexedDB
-      (env as any).cacheDir = undefined;
-      env.allowLocalModels = false;
+      const engine = await webllm.CreateMLCEngine(MODEL_ID, {
+        initProgressCallback: (report: { progress?: number; text?: string }) => {
+          const progress = report.progress !== undefined ? Math.round(report.progress * 100) : 0;
+          setStatus({ state: "downloading", progress });
+        },
+      });
 
-      setStatus({ state: "loading", progress: 50 });
-
-      const classifier = await pipeline(
-        "token-classification",
-        "openai/privacy-filter",
-        {
-          dtype: "q4",
-          device: "wasm",
-          progress_callback: (p: any) => {
-            if (p.progress !== undefined && p.progress !== null) {
-              setStatus({ state: "downloading", progress: p.progress });
-            }
-          },
-        }
-      );
+      setStatus({ state: "loading", progress: 100 });
 
       const fn = async (text: string): Promise<PIIEntity[]> => {
-        const results = await classifier(text, {
-          aggregation_strategy: "simple",
-        });
+        await engine.resetChat(true);
 
-        const entities: PIIEntity[] = [];
-        let searchFrom = 0;
+        const chunks = chunkText(text, 1500, 200);
+        const allEntities: PIIEntity[] = [];
 
-        for (const r of results as any[]) {
-          let category: PIICategory = "secret";
-          const eg = (r.entity_group || r.entity || "").toLowerCase();
-          if (eg.includes("person")) category = "private_person";
-          else if (eg.includes("email")) category = "private_email";
-          else if (eg.includes("phone")) category = "private_phone";
-          else if (eg.includes("address")) category = "private_address";
-          else if (eg.includes("date")) category = "private_date";
-          else if (eg.includes("url")) category = "private_url";
-          else if (eg.includes("account")) category = "account_number";
-          else if (eg.includes("secret")) category = "secret";
+        for (const chunk of chunks) {
+          try {
+            const response = await engine.chat.completions.create({
+              messages: [
+                { role: "system", content: SYSTEM_PROMPT },
+                { role: "user", content: chunk.text },
+              ],
+              temperature: 0,
+              max_tokens: 1024,
+            });
 
-          const word = (r.word || "").trim();
-          if (!word) continue;
+            const content = response.choices[0]?.message?.content || "";
+            const entities = parseModelResponse(content, chunk.text, chunk.offset);
+            allEntities.push(...entities);
 
-          let start = r.start;
-          let end = r.end;
-
-          if (start === undefined || start === null) {
-            const idx = text.indexOf(word, searchFrom);
-            if (idx !== -1) {
-              start = idx;
-              end = idx + word.length;
-              searchFrom = end;
-            } else {
-              start = 0;
-              end = word.length;
-            }
+            await engine.resetChat(true);
+          } catch (e) {
+            console.error("Chunk inference error:", e);
           }
-
-          entities.push({
-            category,
-            text: word,
-            start,
-            end,
-            confidence: r.score ?? 0.5,
-            source: "model" as const,
-          });
         }
 
-        return entities;
+        return deduplicateEntities(allEntities);
       };
 
       setClassifyFn(() => fn);
@@ -100,4 +86,98 @@ export function useModelLoader() {
   }, [loadModel]);
 
   return { status, classifyFn, loadModel };
+}
+
+function chunkText(
+  text: string,
+  maxLen: number,
+  overlap: number
+): { text: string; offset: number }[] {
+  if (text.length <= maxLen) return [{ text, offset: 0 }];
+
+  const chunks: { text: string; offset: number }[] = [];
+  let start = 0;
+  while (start < text.length) {
+    const end = Math.min(start + maxLen, text.length);
+    chunks.push({ text: text.slice(start, end), offset: start });
+    if (end >= text.length) break;
+    start = end - overlap;
+  }
+  return chunks;
+}
+
+function parseModelResponse(
+  content: string,
+  chunkText: string,
+  offset: number
+): PIIEntity[] {
+  try {
+    // Strip think blocks from Qwen3
+    let cleaned = content.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
+
+    // Strip markdown code fences
+    cleaned = cleaned.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+
+    // Fix trailing commas
+    cleaned = cleaned.replace(/,\s*]/g, "]");
+
+    // Find JSON array
+    const match = cleaned.match(/\[[\s\S]*\]/);
+    if (!match) return [];
+
+    const arr = JSON.parse(match[0]);
+    if (!Array.isArray(arr)) return [];
+
+    const entities: PIIEntity[] = [];
+
+    for (const item of arr) {
+      if (!item.type || !item.text) continue;
+
+      const category = mapCategory(item.type);
+      const entityText = item.text.trim();
+      if (!entityText) continue;
+
+      // Find position in chunk
+      const idx = chunkText.indexOf(entityText);
+      const start = idx !== -1 ? offset + idx : offset;
+      const end = start + entityText.length;
+
+      entities.push({
+        category,
+        text: entityText,
+        start,
+        end,
+        confidence: 0.95,
+        source: "model",
+      });
+    }
+
+    return entities;
+  } catch (e) {
+    console.error("Failed to parse model response:", content, e);
+    return [];
+  }
+}
+
+function mapCategory(type: string): PIICategory {
+  const t = type.toLowerCase();
+  if (t.includes("person") || t.includes("name")) return "private_person";
+  if (t.includes("email")) return "private_email";
+  if (t.includes("phone")) return "private_phone";
+  if (t.includes("address")) return "private_address";
+  if (t.includes("date")) return "private_date";
+  if (t.includes("url")) return "private_url";
+  if (t.includes("account") || t.includes("ssn") || t.includes("credit")) return "account_number";
+  if (t.includes("secret") || t.includes("key") || t.includes("password")) return "secret";
+  return "secret";
+}
+
+function deduplicateEntities(entities: PIIEntity[]): PIIEntity[] {
+  const seen = new Set<string>();
+  return entities.filter((e) => {
+    const key = `${e.start}-${e.end}-${e.category}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }

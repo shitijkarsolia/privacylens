@@ -3,9 +3,9 @@ import type { ModelStatus as ModelStatusType } from "../types";
 const STATUS_CONFIG = {
   idle: { label: "Initializing...", color: "bg-[#787774]" },
   downloading: { label: "Downloading AI model...", color: "bg-[#F5A623]" },
-  loading: { label: "Loading AI model...", color: "bg-[#F5A623]" },
+  loading: { label: "Preparing AI model...", color: "bg-[#F5A623]" },
   ready: { label: "AI-powered detection active", color: "bg-[#12A594]" },
-  failed: { label: "Regex-only mode", color: "bg-[#E54D2E]" },
+  failed: { label: "Model failed — check WebGPU", color: "bg-[#E54D2E]" },
 };
 
 interface Props {
