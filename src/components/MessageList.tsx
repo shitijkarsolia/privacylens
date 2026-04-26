@@ -14,10 +14,11 @@ const SAMPLE_FILES = [
 interface Props {
   messages: Message[];
   loading: boolean;
-  onSampleFile?: (file: File) => void;
+  onSampleFile?: (files: File[]) => void;
+  onExampleText?: (text: string) => void;
 }
 
-export function MessageList({ messages, loading, onSampleFile }: Props) {
+export function MessageList({ messages, loading, onSampleFile, onExampleText }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -30,7 +31,7 @@ export function MessageList({ messages, loading, onSampleFile }: Props) {
       const res = await fetch(`/samples/${sample.name}`);
       const blob = await res.blob();
       const file = new File([blob], sample.name, { type: blob.type });
-      onSampleFile(file);
+      onSampleFile([file]);
     } catch (err) {
       console.error("Failed to load sample:", err);
     }
@@ -49,7 +50,7 @@ export function MessageList({ messages, loading, onSampleFile }: Props) {
             See what AI sees before AI sees it
           </h2>
           <p className="text-sm leading-relaxed text-[var(--color-text-secondary)] max-w-[45ch] mx-auto mb-6">
-            Type a message or upload a file. PrivacyLens uses an on-device AI model to scan for personal information before anything is sent.
+            Type a message or upload files. PrivacyLens scans for personal information before anything is sent.
           </p>
 
           {/* Text examples */}
@@ -63,12 +64,13 @@ export function MessageList({ messages, loading, onSampleFile }: Props) {
                 "Email me at sarah@company.com",
                 "I live at 742 Evergreen Terrace, Springfield",
               ].map((example) => (
-                <span
+                <button
                   key={example}
-                  className="text-xs font-mono px-3 py-1.5 rounded-full bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-secondary)]"
+                  onClick={() => onExampleText?.(example)}
+                  className="text-xs font-mono px-3 py-1.5 rounded-full bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-secondary)] transition hover:border-[var(--color-accent)]/40 hover:bg-[var(--color-accent)]/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]/25"
                 >
                   {example}
-                </span>
+                </button>
               ))}
             </div>
           </div>
@@ -144,7 +146,7 @@ export function MessageList({ messages, loading, onSampleFile }: Props) {
                 <p className="whitespace-pre-wrap">{msg.content}</p>
                 {msg.redacted && (
                   <p className="mt-2 text-xs opacity-60 font-mono">
-                    PII redacted before sending
+                    Personal data redacted before sending
                   </p>
                 )}
               </div>

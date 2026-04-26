@@ -7,7 +7,13 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "server": "tsx server.ts"
+    "server": "tsx server.ts",
+    "test:extension": "node scripts/test-extension-fixture.mjs",
+    "test:extension:background": "node scripts/test-extension-background.mjs",
+    "test:extension:files": "node scripts/test-extension-file-scanner.mjs",
+    "test:extension:sidepanel": "node scripts/test-extension-sidepanel.mjs",
+    "test:demo": "node scripts/test-demo-website.mjs",
+    "verify:extension": "node scripts/verify-extension.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.91.0",
@@ -17,6 +23,7 @@
     "cors": "^2.8.5",
     "express": "^4.21.0",
     "framer-motion": "^11.0.0",
+    "jspdf": "^4.2.1",
     "lucide-react": "^0.400.0",
     "pdfjs-dist": "^4.0.0",
     "react": "^18.3.1",
@@ -30,6 +37,7 @@
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.0",
+    "playwright": "^1.59.1",
     "tailwindcss": "^4.0.0",
     "tsx": "^4.19.0",
     "typescript": "^5.5.0",

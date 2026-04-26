@@ -1,4 +1,5 @@
 import type { PIIEntity } from "../types";
+import { scanWithRegex } from "./regex-scanner";
 
 export function mergeEntities(
   a: PIIEntity[],
@@ -35,11 +36,14 @@ export async function runDetectionPipeline(
   text: string,
   classifyFn?: (text: string) => Promise<PIIEntity[]>
 ): Promise<PIIEntity[]> {
-  if (!classifyFn) return [];
+  const regexEntities = scanWithRegex(text);
+
+  if (!classifyFn) return regexEntities;
 
   try {
-    return await classifyFn(text);
+    const modelEntities = await classifyFn(text);
+    return mergeEntities(regexEntities, modelEntities);
   } catch {
-    return [];
+    return regexEntities;
   }
 }

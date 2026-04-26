@@ -25,6 +25,30 @@ npm run dev
 # Open http://localhost:5173
 ```
 
+## Chrome Extension
+
+PrivacyLens now builds a Chrome MV3 extension into `dist`.
+
+```bash
+npm run build
+# Chrome -> chrome://extensions -> Developer mode -> Load unpacked -> select ./dist
+```
+
+The public product page is at `/`, the install guide is at `/install`, and the original chat demo remains at `/demo`.
+
+See [docs/INSTALL_EXTENSION.md](docs/INSTALL_EXTENSION.md) and [docs/EXTENSION_STATUS.md](docs/EXTENSION_STATUS.md) for current implementation status and verification notes.
+
+Run the local extension behavior fixture:
+
+```bash
+npm run test:extension
+npm run test:extension:background
+npm run test:extension:files
+npm run test:extension:sidepanel
+npm run test:demo
+npm run verify:extension
+```
+
 ## How It Works
 
 ### Text Messages
@@ -38,22 +62,22 @@ npm run dev
 1. User uploads or drops a PDF
 2. `pdfjs-dist` extracts text from the PDF's text layer (no OCR needed)
 3. Extracted text is fed through the AI model for PII detection
-4. If PII found: the PDF is rendered to canvas, PII regions are blackened, and a **before/after visual comparison slider** is shown in the review panel
-5. User reviews and chooses to send redacted text or original
+4. If PII is found in the extension: the original attachment is blocked, the side panel opens, and a **before/after visual comparison slider** is shown
+5. User clicks **Attach redacted copy** to attach sanitized redacted files instead of the original risky files
 
 ### Images
 1. User uploads or drops an image (PNG, JPG, WebP)
 2. `Tesseract.js` runs OCR entirely in-browser to extract text from the image
 3. Extracted text is fed through the AI model for PII detection
-4. If PII found: the image is blurred/obfuscated, and a **before/after visual comparison slider** is shown
-5. User reviews and chooses to send redacted text or original
+4. If PII is found in the extension: the original attachment is blocked, the side panel opens, and a redacted preview is shown
+5. User clicks **Attach redacted copy** to attach a sanitized copy
 
 ### The AI Model
 - **Model**: `openai/privacy-filter` — Apache 2.0 licensed, purpose-built for PII detection
 - **Architecture**: 1.5B total parameters, 50M active per token (sparse MoE with 128 experts, top-4 routing)
 - **Runs locally**: Via `@huggingface/transformers` in the browser using WASM (or WebGPU where available)
 - **Cached**: Model is cached in the browser's Cache API after first download — subsequent visits load instantly
-- **8 PII categories**: person, email, phone, address, date, URL, account_number, secret
+- **PII categories**: person, email, phone, address, date, URL, account number, secret, SSN, employee ID, and credit card
 - **High accuracy**: >99.9% confidence on detected entities, zero false positives on clean text
 
 ## Ethics Logic Gate
@@ -61,9 +85,10 @@ npm run dev
 This is a **hard gate** in the code — not a suggestion, not a warning:
 - ANY detected PII blocks the send pipeline
 - Send button is disabled until user reviews
-- User must explicitly choose: redact individual items, auto-redact all, or override with "I understand the risk" confirmation
+- User must explicitly choose which items are redacted or kept for that one send
+- Risky attachments are held back until the user attaches a sanitized redacted copy
+- Unsupported or unreadable attachments fail closed and require an explicit original-file override
 - Override requires a second confirmation step
-- All decisions are logged locally for accountability (no PII text stored)
 
 ## Architecture
 
@@ -125,8 +150,7 @@ src/
 │   ├── pdf-scanner.ts           # PDF text extraction via pdfjs-dist
 │   ├── image-scanner.ts         # OCR via Tesseract.js
 │   ├── visual-obfuscator.ts     # Canvas-based PDF/image obfuscation
-│   ├── audit-log.ts             # localStorage audit trail (no PII stored)
-│   ├── regex-scanner.ts         # Regex patterns (available but disabled)
+│   ├── regex-scanner.ts         # Fast local regex fallback for structured PII
 │   └── chat-api.ts              # Client-side API calls
 ├── components/
 │   ├── ChatPage.tsx             # Main layout + state orchestration
@@ -136,7 +160,7 @@ src/
 │   ├── BeforeAfterSlider.tsx    # Draggable image comparison slider
 │   ├── HighlightedText.tsx      # Inline PII highlighting
 │   ├── ModelStatus.tsx          # AI model loading indicator
-│   └── AuditLogPanel.tsx        # Privacy stats sidebar
+│   └── LandingPage.tsx          # Product landing page
 ├── hooks/
 │   ├── useChat.ts               # Chat message state + API calls
 │   ├── usePIIDetection.ts       # Detection pipeline state
@@ -167,6 +191,5 @@ Following taste-skill design principles:
 - All PII detection runs **locally in the browser** using an on-device AI model
 - No data leaves the device until the user explicitly approves
 - The AI model is cached in the browser — no re-download needed
-- The audit log stores only category counts, never actual PII text
 - The Claude API proxy only receives approved/redacted content
 - File processing (PDF parsing, OCR) all happens client-side
