@@ -13,6 +13,11 @@ const PATTERNS: RegexPattern[] = [
     confidence: 0.99,
   },
   {
+    pattern: /\b\d{3}[-\s]?X{2}[-\s]?X{4}\b/gi,
+    category: "ssn",
+    confidence: 0.96,
+  },
+  {
     pattern: /\b\d{9}\b(?=.*\b(ssn|social)\b)/gi,
     category: "ssn",
     confidence: 0.85,
@@ -75,6 +80,27 @@ const PATTERNS: RegexPattern[] = [
     category: "secret",
     confidence: 0.95,
   },
+  {
+    pattern: /\b(?:employee\s+id|emp(?:loyee)?\s*#?)\s*(?:is|:)?\s*([A-Z]{2,5}-?\d{3,8})\b/gi,
+    category: "employee_id",
+    confidence: 0.93,
+  },
+  {
+    pattern: /\bEMP-\d{3,8}\b/gi,
+    category: "employee_id",
+    confidence: 0.92,
+  },
+  {
+    pattern:
+      /\b\d{1,6}\s+[A-Z][A-Za-z0-9.'-]*(?:\s+[A-Z][A-Za-z0-9.'-]*){0,4}\s+(?:St|Street|Ave|Avenue|Rd|Road|Blvd|Boulevard|Dr|Drive|Ln|Lane|Way|Court|Ct|Circle|Cir|Terrace|Ter|Place|Pl)\b(?:\s+(?:Apt|Unit|Suite|Ste|#)\s*[A-Za-z0-9-]+)?(?:,?\s+[A-Z][A-Za-z.'-]+(?:\s+[A-Z][a-z.'-]+){0,2})?(?:\s+[A-Z]{2}\s+\d{5}(?:-\d{4})?)?/g,
+    category: "private_address",
+    confidence: 0.88,
+  },
+  {
+    pattern: /\b(?:between|by|for|from|name is|i am|i'm)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2})\b/g,
+    category: "private_person",
+    confidence: 0.72,
+  },
 ];
 
 export function scanWithRegex(text: string): PIIEntity[] {
@@ -85,16 +111,38 @@ export function scanWithRegex(text: string): PIIEntity[] {
     let match: RegExpExecArray | null;
 
     while ((match = regex.exec(text)) !== null) {
+      const matchedText = match[1] ?? match[0];
+      const start = match.index + match[0].indexOf(matchedText);
       entities.push({
         category,
-        text: match[0],
-        start: match.index,
-        end: match.index + match[0].length,
+        text: matchedText,
+        start,
+        end: start + matchedText.length,
         confidence,
         source: "regex",
       });
     }
   }
 
-  return entities.sort((a, b) => a.start - b.start);
+  return mergeOverlappingEntities(entities);
+}
+
+function mergeOverlappingEntities(entities: PIIEntity[]): PIIEntity[] {
+  const sorted = [...entities].sort(
+    (a, b) => a.start - b.start || b.confidence - a.confidence
+  );
+  const merged: PIIEntity[] = [];
+
+  for (const entity of sorted) {
+    const last = merged[merged.length - 1];
+    if (last && entity.start < last.end) {
+      if (entity.confidence > last.confidence) {
+        merged[merged.length - 1] = entity;
+      }
+    } else {
+      merged.push(entity);
+    }
+  }
+
+  return merged;
 }

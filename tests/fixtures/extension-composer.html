@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PrivacyLens Extension Fixture</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: system-ui, sans-serif;
+        background: #f8fafc;
+        color: #111827;
+      }
+
+      main {
+        width: min(760px, calc(100vw - 32px));
+        margin: 48px auto;
+      }
+
+      form {
+        display: grid;
+        gap: 16px;
+      }
+
+      #prompt-textarea {
+        min-height: 140px;
+        border: 1px solid #d7dce2;
+        border-radius: 16px;
+        background: white;
+        padding: 16px;
+        font-size: 16px;
+        line-height: 1.6;
+        outline: none;
+      }
+
+      button {
+        width: max-content;
+        border: 0;
+        border-radius: 10px;
+        background: #079b8e;
+        color: white;
+        padding: 12px 18px;
+        font-weight: 700;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Chat fixture</h1>
+      <form id="chat-form">
+        <div id="prompt-textarea" contenteditable="true" data-placeholder="Message PrivacyLens"></div>
+        <input id="file-input" type="file" multiple />
+        <button type="submit" aria-label="Send message">Send</button>
+      </form>
+      <output id="result">not submitted</output>
+    </main>
+
+    <script>
+      window.__privacyLensState = null;
+      window.__privacyLensMessages = [];
+      window.__privacyLensRuntimeListener = null;
+      window.__submitCount = 0;
+      window.__attachedFiles = [];
+      window.__inputAttachedFiles = [];
+      window.__openPanelCount = 0;
+      window.__privacyLensOpenPanelShouldFail = false;
+
+      window.chrome = {
+        runtime: {
+          sendMessage(message, callback) {
+            window.__privacyLensMessages.push(message);
+
+            if (message.type === "PRIVACYLENS_STATE_UPDATE") {
+              window.__privacyLensState = message.state;
+              callback?.({ ok: true, state: message.state });
+              return;
+            }
+
+            if (message.type === "PRIVACYLENS_SCAN_TEXT") {
+              callback?.({ ok: true, entities: [], modelState: "regex-ready" });
+              return;
+            }
+
+            if (message.type === "PRIVACYLENS_OPEN_PANEL") {
+              window.__openPanelCount += 1;
+              callback?.({
+                ok: true,
+                opened: !window.__privacyLensOpenPanelShouldFail,
+                error: window.__privacyLensOpenPanelShouldFail ? "sidePanel.open unavailable in this context" : undefined,
+              });
+              return;
+            }
+
+            callback?.({ ok: true });
+          },
+          onMessage: {
+            addListener(listener) {
+              window.__privacyLensRuntimeListener = listener;
+            },
+            removeListener() {
+              window.__privacyLensRuntimeListener = null;
+            },
+          },
+        },
+      };
+
+      document.getElementById("chat-form").addEventListener("submit", (event) => {
+        event.preventDefault();
+        window.__submitCount += 1;
+        document.getElementById("result").textContent = `submitted ${window.__submitCount}`;
+      });
+
+      async function readFiles(event) {
+        return Promise.all(Array.from(event.target.files || []).map(async (file) => ({
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          text: file.type.startsWith("text/") ? await file.text() : "",
+        })));
+      }
+
+      document.getElementById("file-input").addEventListener("input", async (event) => {
+        window.__inputAttachedFiles = await readFiles(event);
+      });
+
+      document.getElementById("file-input").addEventListener("change", async (event) => {
+        window.__attachedFiles = await readFiles(event);
+      });
+    </script>
+  </body>
+</html>

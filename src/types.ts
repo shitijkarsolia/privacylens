@@ -9,6 +9,7 @@ export type PIICategory =
   | "private_url"
   | "account_number"
   | "secret"
+  | "employee_id"
   | "ssn"
   | "credit_card";
 
@@ -37,13 +38,6 @@ export interface Message {
   timestamp: number;
 }
 
-export interface AuditEntry {
-  timestamp: number;
-  action: "redacted" | "approved_override" | "blocked" | "clean_send";
-  categoryCounts: Partial<Record<PIICategory, number>>;
-  totalEntities: number;
-}
-
 export interface ModelStatus {
   state: "idle" | "downloading" | "loading" | "ready" | "failed";
   progress?: number;
@@ -53,6 +47,7 @@ export interface ModelStatus {
 export const SEVERITY_MAP: Record<PIICategory, Severity> = {
   account_number: "high",
   secret: "high",
+  employee_id: "high",
   ssn: "high",
   credit_card: "high",
   private_person: "medium",
@@ -72,6 +67,7 @@ export const REDACTION_LABELS: Record<PIICategory, string> = {
   private_url: "[URL]",
   account_number: "[ACCOUNT]",
   secret: "[SECRET]",
+  employee_id: "[EMPLOYEE ID]",
   ssn: "[SSN]",
   credit_card: "[CREDIT CARD]",
 };

@@ -72,15 +72,15 @@ export function BeforeAfterSlider({ pages, label, onDownloadRedacted }: Props) {
         onPointerMove={handlePointerMove}
         style={{ cursor: "col-resize" }}
       >
-        {/* After (redacted) — full background */}
+        {/* Safe copy - full background */}
         <img
           src={current.afterSrc}
-          alt="Redacted"
+          alt="Safe copy"
           className="absolute inset-0 w-full h-full object-contain pointer-events-none"
           draggable={false}
         />
 
-        {/* Before (original) — clipped */}
+        {/* Original - clipped */}
         <div
           className="absolute inset-0 overflow-hidden pointer-events-none"
           style={{ clipPath: `inset(0 ${100 - position}% 0 0)` }}
@@ -110,7 +110,7 @@ export function BeforeAfterSlider({ pages, label, onDownloadRedacted }: Props) {
           Original
         </div>
         <div className="absolute top-3 right-3 px-2.5 py-1 rounded-lg bg-black/60 backdrop-blur-sm text-white text-[11px] font-mono pointer-events-none">
-          Redacted
+          Safe copy
         </div>
 
         {/* Page navigation */}

@@ -19,18 +19,39 @@
 }
 
 html, body, #root {
-  height: 100%;
+  min-height: 100%;
   margin: 0;
   padding: 0;
-  overflow: hidden;
 }
 
 body {
   font-family: var(--font-sans);
   color: var(--color-text);
   background-color: var(--color-canvas);
+  overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+.landing-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (max-width: 639px) {
+  .landing-copy {
+    max-width: calc(100vw - 32px);
+  }
+
+  .landing-copy h1,
+  .landing-copy p {
+    max-width: 100%;
+  }
+}
+
+@media (min-width: 1280px) {
+  .landing-grid {
+    grid-template-columns: 560px minmax(0, 1fr);
+  }
 }
 
 ::selection {

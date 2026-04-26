@@ -2,15 +2,18 @@ import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageList } from "./MessageList";
 import { MessageInput } from "./MessageInput";
-import { ReviewPanel } from "./ReviewPanel";
+import { ReviewPanel, type ReviewIssue } from "./ReviewPanel";
 import { ModelStatus } from "./ModelStatus";
-import { AuditLogPanel } from "./AuditLogPanel";
 import { useChat } from "../hooks/useChat";
 import { useModelLoader } from "../hooks/useModelLoader";
 import { usePIIDetection } from "../hooks/usePIIDetection";
-import { addAuditEntry, createAuditEntry } from "../lib/audit-log";
 import { scanPDF } from "../lib/pdf-scanner";
 import { scanImage } from "../lib/image-scanner";
+import { runDetectionPipeline } from "../lib/upload-interceptor";
+import { evaluateGate } from "../lib/ethics-gate";
+import {
+  redactSelective,
+} from "../lib/redaction-engine";
 import {
   renderPDFPages,
   getAllPDFTextPositions,
@@ -23,10 +26,16 @@ import {
 import type { PIIEntity } from "../types";
 
 type ScanStatus = "idle" | "scanning" | "clean" | "blocked";
+type ReviewMode = "message" | "attachment";
+type DemoFileKind = "text" | "pdf" | "image";
+
+const MAX_DEMO_FILE_BYTES = 8 * 1024 * 1024;
+const MAX_REVIEW_FILES = 5;
 
 export interface FilePreview {
   pages: { beforeSrc: string; afterSrc: string }[];
   name: string;
+  kind: DemoFileKind;
   obfuscatedCanvases?: HTMLCanvasElement[];
 }
 
@@ -36,23 +45,156 @@ export interface AttachedFile {
   redacted: boolean;
 }
 
+interface ScannedFile {
+  file: File;
+  kind: DemoFileKind;
+  text: string;
+  entities: PIIEntity[];
+}
+
+interface PendingAttachmentRecord {
+  name: string;
+  text: string;
+  entities: PIIEntity[];
+  globalEntityIndexes: number[];
+}
+
+function fileKind(file: File): DemoFileKind | null {
+  const name = file.name.toLowerCase();
+  if (file.type === "application/pdf" || name.endsWith(".pdf")) return "pdf";
+  if (file.type.startsWith("image/") || /\.(png|jpe?g|webp)$/i.test(name)) return "image";
+  if (
+    file.type.startsWith("text/") ||
+    /\.(txt|md|csv|json|log)$/i.test(name)
+  ) {
+    return "text";
+  }
+  return null;
+}
+
+function formatBytes(bytes: number) {
+  if (bytes >= 1024 * 1024) return `${Math.round(bytes / 1024 / 1024)} MB`;
+  if (bytes >= 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${bytes} bytes`;
+}
+
+function summarizeFiles(files: File[]) {
+  if (files.length === 0) return "Attachment";
+  if (files.length === 1) return files[0].name;
+  return `${files.length} files`;
+}
+
+function offsetEntities(entities: PIIEntity[], offset: number): PIIEntity[] {
+  return entities.map((entity) => ({
+    ...entity,
+    start: entity.start + offset,
+    end: entity.end + offset,
+  }));
+}
+
+function buildAttachmentText(files: AttachedFile[]) {
+  return files
+    .map(
+      (file) =>
+        `[Attached: ${file.name}${file.redacted ? " (redacted)" : ""}]\n\n${file.text}`
+    )
+    .join("\n\n---\n\n");
+}
+
+async function buildFilePreview(record: ScannedFile): Promise<FilePreview | null> {
+  if (record.entities.length === 0) return null;
+
+  if (record.kind === "pdf") {
+    const originalCanvases = await renderPDFPages(record.file);
+    const allTextPositions = await getAllPDFTextPositions(record.file);
+    const obfuscatedCanvases = originalCanvases.map((canvas, index) =>
+      createObfuscatedCanvas(
+        canvas,
+        allTextPositions[index] || [],
+        record.entities,
+        record.text
+      )
+    );
+    return {
+      pages: originalCanvases.map((canvas, index) => ({
+        beforeSrc: canvasToDataURL(canvas),
+        afterSrc: canvasToDataURL(obfuscatedCanvases[index]),
+      })),
+      name: record.file.name,
+      kind: "pdf",
+      obfuscatedCanvases,
+    };
+  }
+
+  if (record.kind === "image") {
+    const originalCanvas = await renderImageToCanvas(record.file);
+    const obfuscatedCanvas = createObfuscatedImageCanvas(
+      originalCanvas,
+      record.text,
+      record.entities
+    );
+    return {
+      pages: [
+        {
+          beforeSrc: canvasToDataURL(originalCanvas),
+          afterSrc: canvasToDataURL(obfuscatedCanvas),
+        },
+      ],
+      name: record.file.name,
+      kind: "image",
+      obfuscatedCanvases: [obfuscatedCanvas],
+    };
+  }
+
+  return null;
+}
+
 export function ChatPage() {
   const { messages, loading, send } = useChat();
   const { status: modelStatus, classifyFn } = useModelLoader();
-  const { result, scanning, scanInstant, scanFull, clear } =
-    usePIIDetection(classifyFn);
+  const {
+    result,
+    scanning,
+    scanInstant,
+    scanFull,
+    setResult: setDetectionResult,
+    clear,
+  } = usePIIDetection(classifyFn);
 
   const [pendingText, setPendingText] = useState("");
+  const [pendingOriginalText, setPendingOriginalText] = useState("");
+  const [pendingAttachmentName, setPendingAttachmentName] = useState("Attachment");
+  const [reviewMode, setReviewMode] = useState<ReviewMode>("message");
+  const [reviewIssues, setReviewIssues] = useState<ReviewIssue[]>([]);
+  const [safeFileCount, setSafeFileCount] = useState(0);
   const [showReview, setShowReview] = useState(false);
-  const [showAuditLog, setShowAuditLog] = useState(false);
   const [fileScanning, setFileScanning] = useState(false);
   const [fileName, setFileName] = useState("");
   const [scanStatus, setScanStatus] = useState<ScanStatus>("idle");
   const [filePreview, setFilePreview] = useState<FilePreview | null>(null);
-  const [attachedFile, setAttachedFile] = useState<AttachedFile | null>(null);
+  const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
+  const [pendingAttachmentRecords, setPendingAttachmentRecords] = useState<PendingAttachmentRecord[]>([]);
+  const [composerText, setComposerText] = useState("");
+
+  const resetReview = useCallback(() => {
+    setShowReview(false);
+    setPendingText("");
+    setPendingOriginalText("");
+    setPendingAttachmentName("Attachment");
+    setReviewIssues([]);
+    setSafeFileCount(0);
+    setFilePreview(null);
+    setPendingAttachmentRecords([]);
+    setScanStatus("idle");
+  }, []);
 
   const handleTextChange = useCallback(
     (text: string) => {
+      setComposerText(text);
+      setPendingText(text);
+      setPendingOriginalText(text);
+      setReviewMode("message");
+      setReviewIssues([]);
       scanInstant(text);
       if (!text.trim()) setScanStatus("idle");
     },
@@ -61,166 +203,303 @@ export function ChatPage() {
 
   const handleSubmit = useCallback(
     async (text: string) => {
-      const fullText = attachedFile
-        ? `[Attached: ${attachedFile.name}${attachedFile.redacted ? " (redacted)" : ""}]\n\n${attachedFile.text}\n\n---\n\n${text}`
-        : text;
+      const attachmentText = buildAttachmentText(attachedFiles);
+      const fullText = [attachmentText, text].filter(Boolean).join("\n\n---\n\n");
+
+      if (!fullText.trim()) return;
 
       setPendingText(fullText);
+      setPendingOriginalText(fullText);
+      setReviewMode("message");
+      setReviewIssues([]);
       setScanStatus("scanning");
 
-      // If file is already attached (already scanned), just send
-      if (attachedFile) {
-        setScanStatus("clean");
-        addAuditEntry(createAuditEntry("clean_send", []));
-        send(fullText);
-        setAttachedFile(null);
-        clear();
-        setTimeout(() => setScanStatus("idle"), 2000);
-        return;
-      }
-
-      const detection = await scanFull(text);
+      const detection = await scanFull(fullText);
 
       if (detection.blocked) {
         setScanStatus("blocked");
         setShowReview(true);
       } else {
         setScanStatus("clean");
-        addAuditEntry(createAuditEntry("clean_send", []));
-        send(text);
+        send(fullText);
+        setComposerText("");
+        setAttachedFiles([]);
         clear();
         setTimeout(() => setScanStatus("idle"), 2000);
       }
     },
-    [scanFull, send, clear, attachedFile]
+    [attachedFiles, scanFull, send, clear]
+  );
+
+  const scanSingleFile = useCallback(
+    async (file: File, kind: DemoFileKind): Promise<ScannedFile> => {
+      if (kind === "pdf") {
+        return { file, kind, ...(await scanPDF(file, classifyFn || undefined)) };
+      }
+      if (kind === "image") {
+        return { file, kind, ...(await scanImage(file, classifyFn || undefined)) };
+      }
+
+      const text = await file.text();
+      const entities = await runDetectionPipeline(text, classifyFn || undefined);
+      return { file, kind, text, entities };
+    },
+    [classifyFn]
   );
 
   const handleFileUpload = useCallback(
-    async (file: File) => {
+    async (incoming: File | File[]) => {
+      const allFiles = Array.isArray(incoming) ? incoming : [incoming];
+      if (allFiles.length === 0) return;
+
+      const selectedFiles = allFiles.slice(0, MAX_REVIEW_FILES);
+      const issues: ReviewIssue[] = [];
+      const supported: Array<{ file: File; kind: DemoFileKind }> = [];
+
+      for (const file of selectedFiles) {
+        const kind = fileKind(file);
+        if (!kind) {
+          issues.push({
+            name: file.name,
+            status: "unsupported",
+            reason: "This file type is not scanned yet.",
+          });
+          continue;
+        }
+
+        if (file.size > MAX_DEMO_FILE_BYTES) {
+          issues.push({
+            name: file.name,
+            status: "unscannable",
+            reason: `This file is ${formatBytes(file.size)}. PrivacyLens scans files up to ${formatBytes(MAX_DEMO_FILE_BYTES)}.`,
+          });
+          continue;
+        }
+
+        supported.push({ file, kind });
+      }
+
+      for (const file of allFiles.slice(MAX_REVIEW_FILES)) {
+        issues.push({
+          name: file.name,
+          status: "skipped",
+          reason: `Only the first ${MAX_REVIEW_FILES} files can be reviewed at once.`,
+        });
+      }
+
       setFileScanning(true);
-      setFileName(file.name);
+      setFileName(summarizeFiles(selectedFiles));
       setScanStatus("scanning");
       setFilePreview(null);
 
       try {
-        let scanResult: { text: string; entities: PIIEntity[] };
+        const settled = await Promise.allSettled(
+          supported.map(({ file, kind }) => scanSingleFile(file, kind))
+        );
 
-        const isPDF = file.type === "application/pdf" || file.name.endsWith(".pdf");
-        const isImage = file.type.startsWith("image/");
-        const isText = file.type.startsWith("text/") || file.name.endsWith(".txt");
-
-        if (isPDF) {
-          scanResult = await scanPDF(file);
-        } else if (isImage) {
-          scanResult = await scanImage(file);
-        } else if (isText) {
-          const text = await file.text();
-          const { runDetectionPipeline } = await import("../lib/upload-interceptor");
-          const entities = await runDetectionPipeline(text);
-          scanResult = { text, entities };
-        } else {
-          setFileScanning(false);
-          setFileName("");
-          setScanStatus("idle");
-          return;
-        }
-
-        if (!scanResult.text) {
-          setFileScanning(false);
-          setFileName("");
-          setScanStatus("clean");
-          setAttachedFile({ name: file.name, text: "[No text content detected]", redacted: false });
-          setTimeout(() => setScanStatus("idle"), 2000);
-          return;
-        }
-
-        setPendingText(scanResult.text);
-        const detection = await scanFull(scanResult.text);
-
-        if (detection.blocked) {
-          if (isPDF) {
-            try {
-              const originalCanvases = await renderPDFPages(file);
-              const allTextPositions = await getAllPDFTextPositions(file);
-              const obfuscatedCanvases = originalCanvases.map((canvas, i) =>
-                createObfuscatedCanvas(canvas, allTextPositions[i] || [], detection.entities, scanResult.text)
-              );
-              const pages = originalCanvases.map((canvas, i) => ({
-                beforeSrc: canvasToDataURL(canvas),
-                afterSrc: canvasToDataURL(obfuscatedCanvases[i]),
-              }));
-              setFilePreview({ pages, name: file.name, obfuscatedCanvases });
-            } catch (e) {
-              console.error("PDF visual obfuscation failed:", e);
-            }
-          } else if (isImage) {
-            try {
-              const originalCanvas = await renderImageToCanvas(file);
-              const obfuscatedCanvas = createObfuscatedImageCanvas(
-                originalCanvas, scanResult.text, detection.entities
-              );
-              setFilePreview({
-                pages: [{ beforeSrc: canvasToDataURL(originalCanvas), afterSrc: canvasToDataURL(obfuscatedCanvas) }],
-                name: file.name,
-                obfuscatedCanvases: [obfuscatedCanvas],
-              });
-            } catch (e) {
-              console.error("Image visual obfuscation failed:", e);
-            }
+        const scanned: ScannedFile[] = [];
+        settled.forEach((entry, index) => {
+          const file = supported[index].file;
+          if (entry.status === "rejected") {
+            issues.push({
+              name: file.name,
+              status: "unscannable",
+              reason: entry.reason?.message || "PrivacyLens could not scan this file.",
+            });
+            return;
           }
 
+          if (!entry.value.text.trim()) {
+            issues.push({
+              name: file.name,
+              status: "unscannable",
+              reason: "PrivacyLens could not find readable text in this file.",
+            });
+            return;
+          }
+
+          scanned.push(entry.value);
+        });
+
+        const combinedParts: string[] = [];
+        const combinedEntities: PIIEntity[] = [];
+        const pendingRecords: PendingAttachmentRecord[] = [];
+        let cursor = 0;
+
+        for (const record of scanned) {
+          const prefix = `[Attached ${record.kind} file: ${record.file.name}]\n`;
+          const body = `${prefix}${record.text}`;
+          const globalEntityIndexes = record.entities.map(
+            (_, entityIndex) => combinedEntities.length + entityIndex
+          );
+          combinedParts.push(body);
+          combinedEntities.push(...offsetEntities(record.entities, cursor + prefix.length));
+          pendingRecords.push({
+            name: record.file.name,
+            text: record.text,
+            entities: record.entities,
+            globalEntityIndexes,
+          });
+          cursor += body.length + 2;
+        }
+
+        const combinedText = combinedParts.join("\n\n");
+        const originalText = selectedFiles
+          .map((file) => `[Original file selected: ${file.name}]`)
+          .join("\n");
+        const detection = evaluateGate(combinedEntities);
+        setDetectionResult(detection);
+
+        setPendingText(combinedText);
+        setPendingOriginalText(combinedText || originalText);
+        setPendingAttachmentName(
+          scanned.length === 1 ? scanned[0].file.name : `${scanned.length || selectedFiles.length} files`
+        );
+        setReviewMode("attachment");
+        setReviewIssues(issues);
+        setSafeFileCount(scanned.length);
+        setPendingAttachmentRecords(pendingRecords);
+
+        const previewSource = scanned.find(
+          (record) => record.entities.length > 0 && record.kind !== "text"
+        );
+        if (previewSource) {
+          try {
+            setFilePreview(await buildFilePreview(previewSource));
+          } catch (error) {
+            console.error("File preview failed:", error);
+          }
+        }
+
+        if (detection.blocked || issues.length > 0) {
           setScanStatus("blocked");
           setShowReview(true);
-        } else {
-          setScanStatus("clean");
-          addAuditEntry(createAuditEntry("clean_send", []));
-          setAttachedFile({ name: file.name, text: scanResult.text, redacted: false });
-          clear();
-          setTimeout(() => setScanStatus("idle"), 2000);
+          return;
         }
+
+        setScanStatus("clean");
+        setAttachedFiles(
+          scanned.map((record) => ({
+            name: record.file.name,
+            text: record.text,
+            redacted: false,
+          }))
+        );
+        clear();
+        setTimeout(() => setScanStatus("idle"), 2000);
       } catch (err: any) {
         console.error("File scan error:", err);
-        setScanStatus("idle");
+        setDetectionResult(evaluateGate([]));
+        setPendingText("");
+        setPendingOriginalText(summarizeFiles(selectedFiles));
+        setPendingAttachmentName(summarizeFiles(selectedFiles));
+        setReviewMode("attachment");
+        setReviewIssues([
+          {
+            name: summarizeFiles(selectedFiles),
+            status: "unscannable",
+            reason: err?.message || "PrivacyLens could not scan this file.",
+          },
+        ]);
+        setSafeFileCount(0);
+        setScanStatus("blocked");
+        setShowReview(true);
       } finally {
         setFileScanning(false);
         setFileName("");
       }
     },
-    [clear, scanFull]
+    [clear, scanSingleFile, setDetectionResult]
   );
 
-  const handleAttachRedacted = useCallback(
-    (redactedText: string) => {
-      const categories = result?.entities.map((e) => e.category) ?? [];
-      addAuditEntry(createAuditEntry("redacted", categories));
-      setAttachedFile({ name: filePreview?.name || fileName || "document", text: redactedText, redacted: true });
-      setShowReview(false);
-      setPendingText("");
+  const handleReviewPrimary = useCallback(
+    (reviewedText: string, selectedEntities: Set<number>) => {
+      if (reviewMode === "message") {
+        send(
+          reviewedText,
+          reviewedText !== pendingOriginalText ? pendingOriginalText : undefined
+        );
+        setComposerText("");
+        resetReview();
+        clear();
+        return;
+      }
+
+      if (!safeFileCount) return;
+
+      setAttachedFiles(
+        pendingAttachmentRecords.map((record) => {
+          const localSelected = new Set<number>();
+          record.globalEntityIndexes.forEach((globalIndex, localIndex) => {
+            if (selectedEntities.has(globalIndex)) localSelected.add(localIndex);
+          });
+          const text = redactSelective(record.text, record.entities, localSelected);
+          const redacted = localSelected.size > 0;
+          return {
+            name: redacted ? `redacted-${record.name}` : record.name,
+            text,
+            redacted,
+          };
+        })
+      );
+      resetReview();
       clear();
-      setScanStatus("idle");
     },
-    [result, filePreview, fileName, clear]
+    [
+      reviewMode,
+      send,
+      pendingOriginalText,
+      resetReview,
+      clear,
+      safeFileCount,
+      pendingAttachmentRecords,
+    ]
   );
 
-  const handleAttachOriginal = useCallback(() => {
-    const categories = result?.entities.map((e) => e.category) ?? [];
-    addAuditEntry(createAuditEntry("approved_override", categories));
-    setAttachedFile({ name: filePreview?.name || fileName || "document", text: pendingText, redacted: false });
-    setShowReview(false);
-    setPendingText("");
+  const handleReviewOriginal = useCallback(() => {
+    if (reviewMode === "message") {
+      send(pendingOriginalText || pendingText);
+      setComposerText("");
+      resetReview();
+      clear();
+      return;
+    }
+
+    setAttachedFiles(
+      pendingAttachmentRecords.length
+        ? pendingAttachmentRecords.map((record) => ({
+            name: record.name,
+            text: record.text,
+            redacted: false,
+          }))
+        : [
+            {
+              name: pendingAttachmentName,
+              text: pendingOriginalText || "[Original files attached without scanning]",
+              redacted: false,
+            },
+          ]
+    );
+    resetReview();
     clear();
-    setScanStatus("idle");
-  }, [result, pendingText, filePreview, fileName, clear]);
+  }, [
+    reviewMode,
+    send,
+    pendingOriginalText,
+    pendingText,
+    pendingAttachmentName,
+    pendingAttachmentRecords,
+    resetReview,
+    clear,
+  ]);
 
   const handleCancelReview = useCallback(() => {
-    setShowReview(false);
-    setPendingText("");
-    setFilePreview(null);
-    setScanStatus("idle");
-  }, []);
+    resetReview();
+    clear();
+  }, [resetReview, clear]);
 
-  const handleRemoveAttachment = useCallback(() => {
-    setAttachedFile(null);
+  const handleRemoveAttachment = useCallback((index: number) => {
+    setAttachedFiles((files) => files.filter((_, fileIndex) => fileIndex !== index));
   }, []);
 
   const handleDownloadRedacted = useCallback(async () => {
@@ -239,18 +518,14 @@ export function ChatPage() {
   }, [filePreview]);
 
   const handleNewChat = useCallback(() => {
-    setShowReview(false);
-    setPendingText("");
-    setFilePreview(null);
-    setAttachedFile(null);
-    setScanStatus("idle");
+    resetReview();
+    setAttachedFiles([]);
     clear();
     window.location.reload();
-  }, [clear]);
+  }, [clear, resetReview]);
 
   return (
     <div className="h-full flex flex-col">
-      {/* Header */}
       <div className="flex justify-center px-4 pt-5 pb-3">
         <div className="flex items-center justify-between w-full max-w-4xl px-6 py-3.5 rounded-full bg-[var(--color-surface)]/80 backdrop-blur-xl border border-[var(--color-border)] shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
           <div className="flex items-center gap-4">
@@ -282,9 +557,14 @@ export function ChatPage() {
             </button>
             {result && result.entities.length > 0 && !showReview && (
               <button
-                onClick={() => setShowReview(true)}
+                onClick={() => {
+                  setReviewMode("message");
+                  setPendingText(pendingText || "");
+                  setPendingOriginalText(pendingOriginalText || pendingText || "");
+                  setShowReview(true);
+                }}
                 className="w-9 h-9 rounded-xl hover:bg-[var(--color-canvas)] flex items-center justify-center transition-colors text-[#E54D2E] relative"
-                title="Open PII review panel"
+                title="Open personal-data review panel"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
@@ -294,21 +574,10 @@ export function ChatPage() {
                 </span>
               </button>
             )}
-            <button
-              onClick={() => setShowAuditLog(!showAuditLog)}
-              className="w-9 h-9 rounded-xl hover:bg-[var(--color-canvas)] flex items-center justify-center transition-colors text-[var(--color-text-secondary)]"
-              title="Privacy audit log"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
-              </svg>
-            </button>
           </div>
         </div>
       </div>
 
-      {/* Scanning Overlay */}
       <AnimatePresence>
         {(scanStatus === "scanning" || fileScanning) && (
           <motion.div
@@ -331,14 +600,13 @@ export function ChatPage() {
                 Scanning for personal data
               </h3>
               <p className="text-sm text-[var(--color-text-secondary)]">
-                {fileName ? `Analyzing ${fileName}...` : "Running AI model detection..."}
+                {fileName ? `Analyzing ${fileName}...` : "Checking before anything is sent..."}
               </p>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Scan Status Bar */}
       <AnimatePresence>
         {scanStatus !== "idle" && scanStatus !== "scanning" && (
           <motion.div
@@ -362,7 +630,9 @@ export function ChatPage() {
                       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                     </svg>
                     <span>
-                      PII detected — {result?.entities.length} personal data item{(result?.entities.length ?? 0) !== 1 ? "s" : ""} found. Review required before attaching.
+                      Review required - {(result?.entities.length ?? 0) > 0
+                        ? `${result?.entities.length} personal-data item${(result?.entities.length ?? 0) !== 1 ? "s" : ""} found`
+                        : "at least one file could not be scanned"}
                     </span>
                   </>
                 )}
@@ -371,7 +641,7 @@ export function ChatPage() {
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="flex-shrink-0">
                       <path d="M20 6 9 17l-5-5" />
                     </svg>
-                    <span>No personal data detected — safe to send</span>
+                    <span>No personal data detected - safe to send</span>
                   </>
                 )}
               </div>
@@ -380,12 +650,16 @@ export function ChatPage() {
         )}
       </AnimatePresence>
 
-      {/* Main content */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Chat area */}
         <div className="flex-1 flex flex-col min-w-0">
-          <MessageList messages={messages} loading={loading} onSampleFile={handleFileUpload} />
+          <MessageList
+            messages={messages}
+            loading={loading}
+            onSampleFile={handleFileUpload}
+            onExampleText={(example) => handleTextChange(example)}
+          />
           <MessageInput
+            text={composerText}
             onSubmit={handleSubmit}
             onTextChange={handleTextChange}
             onFileUpload={handleFileUpload}
@@ -395,28 +669,26 @@ export function ChatPage() {
             disabled={loading || showReview}
             fileScanning={fileScanning}
             fileName={fileName}
-            modelLoading={modelStatus.state !== "ready" && modelStatus.state !== "failed"}
-            attachedFile={attachedFile}
+            modelLoading={modelStatus.state !== "ready"}
+            attachedFiles={attachedFiles}
             onRemoveAttachment={handleRemoveAttachment}
           />
         </div>
 
-        {/* Review panel */}
         {showReview && result && (
           <ReviewPanel
+            mode={reviewMode}
             text={pendingText}
             result={result}
-            onAttachRedacted={handleAttachRedacted}
-            onAttachOriginal={handleAttachOriginal}
+            onPrimary={handleReviewPrimary}
+            onOriginal={handleReviewOriginal}
             onCancel={handleCancelReview}
             filePreview={filePreview}
+            issueFiles={reviewIssues}
+            safeFileCount={safeFileCount}
+            attachmentName={pendingAttachmentName}
             onDownloadRedacted={filePreview?.obfuscatedCanvases ? handleDownloadRedacted : undefined}
           />
-        )}
-
-        {/* Audit log panel */}
-        {showAuditLog && (
-          <AuditLogPanel onClose={() => setShowAuditLog(false)} />
         )}
       </div>
     </div>
