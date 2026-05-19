@@ -168,6 +168,8 @@ npm run build
 
 For detailed installation and configuration steps, see [docs/INSTALL_EXTENSION.md](docs/INSTALL_EXTENSION.md).
 
+For detailed test commands, sample file descriptions, and development notes, see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
+
 ## Project Structure
 
 ```
@@ -209,7 +211,7 @@ server.ts        # Express API server (Claude proxy + PII scan endpoint)
 
 - [openai/privacy-filter](https://huggingface.co/openai/privacy-filter) - Apache 2.0 licensed PII detection model
 - [Transformers.js](https://github.com/huggingface/transformers.js) by Hugging Face - in-browser ML inference
-- [pdfjs-dist](https://github.com/nicnick/nicnick.github.io) - PDF text extraction
+- [pdfjs-dist](https://mozilla.github.io/pdf.js/) - PDF text extraction
 - [Tesseract.js](https://github.com/naptha/tesseract.js) - In-browser OCR
 
 Built for the **Kiro Spark Challenge** (Ethics frame).
