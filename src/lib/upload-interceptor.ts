@@ -1,5 +1,28 @@
-import type { PIIEntity } from "../types";
+import type { PIIEntity, PIICategory } from "../types";
 import { scanWithRegex } from "./regex-scanner";
+
+// How precisely a category names the data. When spans overlap with similar
+// confidence, keep the more specific label: "SSN" beats the model's generic
+// "account_number" for the same digits.
+const CATEGORY_SPECIFICITY: Partial<Record<PIICategory, number>> = {
+  ssn: 3,
+  credit_card: 3,
+  employee_id: 3,
+  secret: 2,
+  account_number: 1,
+};
+
+function pickLabel(a: PIIEntity, b: PIIEntity): PIIEntity {
+  const specificityA = CATEGORY_SPECIFICITY[a.category] ?? 0;
+  const specificityB = CATEGORY_SPECIFICITY[b.category] ?? 0;
+  if (
+    specificityA !== specificityB &&
+    Math.abs(a.confidence - b.confidence) < 0.15
+  ) {
+    return specificityA > specificityB ? a : b;
+  }
+  return a.confidence >= b.confidence ? a : b;
+}
 
 export function mergeEntities(
   a: PIIEntity[],
@@ -11,19 +34,11 @@ export function mergeEntities(
   for (const entity of all) {
     const last = merged[merged.length - 1];
     if (last && entity.start < last.end) {
-      if (entity.confidence > last.confidence) {
-        merged[merged.length - 1] = {
-          ...entity,
-          start: Math.min(last.start, entity.start),
-          end: Math.max(last.end, entity.end),
-        };
-      } else {
-        merged[merged.length - 1] = {
-          ...last,
-          start: Math.min(last.start, entity.start),
-          end: Math.max(last.end, entity.end),
-        };
-      }
+      merged[merged.length - 1] = {
+        ...pickLabel(last, entity),
+        start: Math.min(last.start, entity.start),
+        end: Math.max(last.end, entity.end),
+      };
     } else {
       merged.push(entity);
     }

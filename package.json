@@ -4,8 +4,12 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "predev": "node scripts/prepare-local-assets.mjs",
     "dev": "vite",
+    "prebuild": "node scripts/prepare-local-assets.mjs",
     "build": "tsc -b && vite build",
+    "package:extension": "node scripts/package-extension.mjs",
+    "build:pages": "PAGES_BASE=/privacylens/ npm run build && node scripts/postbuild-pages.mjs",
     "preview": "vite preview",
     "server": "tsx server.ts",
     "test:extension": "node scripts/test-extension-fixture.mjs",
@@ -17,6 +21,8 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.91.0",
+    "@fontsource/geist-mono": "^5.2.8",
+    "@fontsource/geist-sans": "^5.2.5",
     "@huggingface/transformers": "^4.2.0",
     "@mlc-ai/web-llm": "^0.2.82",
     "canvas": "^3.2.3",

@@ -224,9 +224,24 @@ async function renderPdfFirstPagePreview(file: File): Promise<AttachmentPreview>
   };
 }
 
+// OCR runtime shipped next to this bundle (dist/tesseract/), so the
+// extension and the web build never pull worker code from a CDN.
+function tesseractOptions() {
+  try {
+    const base = new URL("../tesseract/", import.meta.url).toString();
+    return {
+      workerPath: base + "worker.min.js",
+      corePath: base,
+      langPath: base + "lang",
+    };
+  } catch {
+    return undefined;
+  }
+}
+
 async function extractImageText(file: File): Promise<string> {
   const Tesseract = await import("tesseract.js");
-  const worker = await Tesseract.createWorker("eng");
+  const worker = await Tesseract.createWorker("eng", 1, tesseractOptions());
 
   try {
     const { data } = await worker.recognize(file);

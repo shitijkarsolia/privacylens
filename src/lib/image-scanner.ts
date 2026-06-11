@@ -1,5 +1,6 @@
 import type { PIIEntity } from "../types";
 import { runDetectionPipeline } from "./upload-interceptor";
+import { localTesseractOptions } from "./tesseract-config";
 
 export async function scanImage(
   file: File,
@@ -7,7 +8,7 @@ export async function scanImage(
 ): Promise<{ text: string; entities: PIIEntity[] }> {
   const Tesseract = await import("tesseract.js");
 
-  const worker = await Tesseract.createWorker("eng");
+  const worker = await Tesseract.createWorker("eng", 1, localTesseractOptions());
   const { data } = await worker.recognize(file);
   await worker.terminate();
 

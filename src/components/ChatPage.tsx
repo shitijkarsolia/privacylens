@@ -149,6 +149,17 @@ async function buildFilePreview(record: ScannedFile): Promise<FilePreview | null
   return null;
 }
 
+const PROTECTED_COUNT_KEY = "privacylens-protected-count";
+
+function readProtectedCount(): number {
+  try {
+    const raw = Number(localStorage.getItem(PROTECTED_COUNT_KEY) || "0");
+    return Number.isFinite(raw) && raw > 0 ? raw : 0;
+  } catch {
+    return 0;
+  }
+}
+
 export function ChatPage() {
   const { messages, loading, send } = useChat();
   const { status: modelStatus, classifyFn } = useModelLoader();
@@ -175,6 +186,20 @@ export function ChatPage() {
   const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
   const [pendingAttachmentRecords, setPendingAttachmentRecords] = useState<PendingAttachmentRecord[]>([]);
   const [composerText, setComposerText] = useState("");
+  const [protectedCount, setProtectedCount] = useState(readProtectedCount);
+
+  const addProtected = useCallback((count: number) => {
+    if (count <= 0) return;
+    setProtectedCount((prev) => {
+      const next = prev + count;
+      try {
+        localStorage.setItem(PROTECTED_COUNT_KEY, String(next));
+      } catch {
+        // Private browsing - keep the in-memory count only.
+      }
+      return next;
+    });
+  }, []);
 
   const resetReview = useCallback(() => {
     setShowReview(false);
@@ -415,6 +440,7 @@ export function ChatPage() {
   const handleReviewPrimary = useCallback(
     (reviewedText: string, selectedEntities: Set<number>) => {
       if (reviewMode === "message") {
+        addProtected(selectedEntities.size);
         send(
           reviewedText,
           reviewedText !== pendingOriginalText ? pendingOriginalText : undefined
@@ -427,6 +453,7 @@ export function ChatPage() {
 
       if (!safeFileCount) return;
 
+      let redactedTotal = 0;
       setAttachedFiles(
         pendingAttachmentRecords.map((record) => {
           const localSelected = new Set<number>();
@@ -435,6 +462,7 @@ export function ChatPage() {
           });
           const text = redactSelective(record.text, record.entities, localSelected);
           const redacted = localSelected.size > 0;
+          redactedTotal += localSelected.size;
           return {
             name: redacted ? `redacted-${record.name}` : record.name,
             text,
@@ -442,6 +470,7 @@ export function ChatPage() {
           };
         })
       );
+      addProtected(redactedTotal);
       resetReview();
       clear();
     },
@@ -453,6 +482,7 @@ export function ChatPage() {
       clear,
       safeFileCount,
       pendingAttachmentRecords,
+      addProtected,
     ]
   );
 
@@ -546,6 +576,18 @@ export function ChatPage() {
 
           <div className="flex items-center gap-2">
             <ModelStatus status={modelStatus} />
+            {protectedCount > 0 && (
+              <div
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[var(--color-accent)]/10 text-[var(--color-accent)] text-xs font-mono font-semibold"
+                title="Personal-data items redacted on this device before anything was sent"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                  <path d="m9 12 2 2 4-4" />
+                </svg>
+                <span className="tabular-nums">{protectedCount} protected</span>
+              </div>
+            )}
             <button
               onClick={handleNewChat}
               className="w-9 h-9 rounded-xl hover:bg-[var(--color-canvas)] flex items-center justify-center transition-colors text-[var(--color-text-secondary)]"
@@ -669,7 +711,11 @@ export function ChatPage() {
             disabled={loading || showReview}
             fileScanning={fileScanning}
             fileName={fileName}
-            modelLoading={modelStatus.state !== "ready"}
+            modelLoading={
+              modelStatus.state === "idle" ||
+              modelStatus.state === "loading" ||
+              modelStatus.state === "downloading"
+            }
             attachedFiles={attachedFiles}
             onRemoveAttachment={handleRemoveAttachment}
           />

@@ -1,7 +1,14 @@
+/* Self-hosted fonts - no requests to Google Fonts at runtime. */
+@import "@fontsource/geist-sans/400.css";
+@import "@fontsource/geist-sans/500.css";
+@import "@fontsource/geist-sans/600.css";
+@import "@fontsource/geist-sans/700.css";
+@import "@fontsource/geist-mono/400.css";
+@import "@fontsource/geist-mono/500.css";
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Geist", system-ui, -apple-system, sans-serif;
+  --font-sans: "Geist Sans", "Geist", system-ui, -apple-system, sans-serif;
   --font-mono: "Geist Mono", "JetBrains Mono", "SF Mono", monospace;
   --color-canvas: #F7F6F3;
   --color-surface: #FFFFFF;

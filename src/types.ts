@@ -35,11 +35,15 @@ export interface Message {
   originalContent?: string;
   piiEntities?: PIIEntity[];
   redacted?: boolean;
+  /** Which backend produced an assistant reply. */
+  via?: "claude" | "demo";
   timestamp: number;
 }
 
 export interface ModelStatus {
-  state: "idle" | "downloading" | "loading" | "ready" | "failed";
+  state: "idle" | "downloading" | "loading" | "ready" | "fallback" | "failed";
+  /** Where detection runs when ready: API server or in-browser WebGPU. */
+  runtime?: "server" | "browser";
   progress?: number;
   error?: string;
 }

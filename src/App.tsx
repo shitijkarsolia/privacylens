@@ -1,13 +1,16 @@
 import { ChatPage } from "./components/ChatPage";
 import { InstallPage } from "./components/InstallPage";
 import { LandingPage } from "./components/LandingPage";
+import { currentRoute } from "./lib/routes";
 
 export default function App() {
-  if (window.location.pathname === "/install") {
+  const route = currentRoute();
+
+  if (route === "/install") {
     return <InstallPage />;
   }
 
-  if (window.location.pathname === "/demo") {
+  if (route === "/demo") {
     return (
       <div className="h-screen overflow-hidden">
         <ChatPage />

@@ -1,4 +1,7 @@
-node_modules/
-dist/
-.env
 *.log
+.env
+dist/
+node_modules/
+output/
+public/tesseract/
+privacylens-extension.zip
