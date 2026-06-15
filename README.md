@@ -142,9 +142,37 @@ The user must explicitly review each detected entity and choose to redact it, ke
 ```bash
 npm install
 npm run build
-ANTHROPIC_API_KEY=your-key npm run server
-# Open http://localhost:3001
+npm run server
+# Open http://localhost:3001  (landing)
+# Open http://localhost:3001/demo  (live chat demo)
 ```
+
+The server runs **with or without** an Anthropic API key:
+
+- **With `ANTHROPIC_API_KEY`** set, the in-app chat talks to Claude.
+- **Without a key**, chat replies come from a clearly labeled built-in demo
+  assistant, so the whole flow (detection, the ethics gate, redaction,
+  before/after previews) is fully explorable out of the box.
+
+```bash
+# Optional: enable live Claude responses
+ANTHROPIC_API_KEY=your-key npm run server
+```
+
+### Shareable static build (no server)
+
+The demo also runs as a fully static site with **zero backend** — PII
+detection falls back to the instant pattern scanner (plus the in-browser
+WebGPU model where available), and chat uses the local demo assistant.
+Nothing leaves the browser.
+
+```bash
+npm run build:pages   # builds dist/ for static hosting + 404 SPA fallback + extension zip
+# Deploy dist/ to GitHub Pages, Netlify, Vercel static, etc.
+```
+
+A GitHub Actions workflow (`.github/workflows/deploy-pages.yml`) publishes
+the demo to GitHub Pages on every push to `main`.
 
 ### Development Mode
 
