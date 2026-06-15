@@ -28,18 +28,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Root-base build: this is what the Chrome extension zip ships.
-      - name: Build extension package
-        run: |
-          npm run build
-          node scripts/package-extension.mjs /tmp/privacylens-extension.zip
-
-      # Subpath build for github.io/<repo>/ hosting.
-      - name: Build site for Pages
-        run: PAGES_BASE=/${{ github.event.repository.name }}/ npm run build
-
-      - name: Prepare static hosting files
-        run: node scripts/postbuild-pages.mjs --zip /tmp/privacylens-extension.zip
+      # Builds the root-base extension zip AND the subpath Pages site,
+      # then adds the 404 SPA fallback and drops the zip into dist/.
+      - name: Build static site + extension package
+        run: node scripts/build-pages.mjs /${{ github.event.repository.name }}/
 
       - name: Configure Pages
         uses: actions/configure-pages@v5

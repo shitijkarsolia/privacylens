@@ -9,7 +9,7 @@
     "prebuild": "node scripts/prepare-local-assets.mjs",
     "build": "tsc -b && vite build",
     "package:extension": "node scripts/package-extension.mjs",
-    "build:pages": "PAGES_BASE=/privacylens/ npm run build && node scripts/postbuild-pages.mjs",
+    "build:pages": "node scripts/build-pages.mjs",
     "preview": "vite preview",
     "server": "tsx server.ts",
     "test:extension": "node scripts/test-extension-fixture.mjs",
