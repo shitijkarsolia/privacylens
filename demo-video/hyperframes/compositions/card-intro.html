@@ -2,16 +2,20 @@
 <meta name="viewport" content="width=1920, height=1080"/>
 <script src="../assets/gsap.min.js"></script>
 <style>
-  @font-face{font-family:"Geist";font-weight:400;src:url("../assets/fonts/geist-sans-latin-400-normal.woff2") format("woff2")}
-  @font-face{font-family:"Geist";font-weight:500;src:url("../assets/fonts/geist-sans-latin-500-normal.woff2") format("woff2")}
-  @font-face{font-family:"Geist";font-weight:600;src:url("../assets/fonts/geist-sans-latin-600-normal.woff2") format("woff2")}
-  @font-face{font-family:"Geist";font-weight:700;src:url("../assets/fonts/geist-sans-latin-700-normal.woff2") format("woff2")}
-  @font-face{font-family:"Geist";font-weight:800;src:url("../assets/fonts/geist-sans-latin-800-normal.woff2") format("woff2")}
-  @font-face{font-family:"Geist Mono";font-weight:500;src:url("../assets/fonts/geist-mono-latin-500-normal.woff2") format("woff2")}
+  @font-face{font-family:"Grotesk";font-weight:500;src:url("../assets/fonts/space-grotesk-latin-500-normal.woff2") format("woff2")}
+  @font-face{font-family:"Grotesk";font-weight:600;src:url("../assets/fonts/space-grotesk-latin-600-normal.woff2") format("woff2")}
+  @font-face{font-family:"Grotesk";font-weight:700;src:url("../assets/fonts/space-grotesk-latin-700-normal.woff2") format("woff2")}
+  @font-face{font-family:"Inter";font-weight:400;src:url("../assets/fonts/inter-latin-400-normal.woff2") format("woff2")}
+  @font-face{font-family:"Inter";font-weight:500;src:url("../assets/fonts/inter-latin-500-normal.woff2") format("woff2")}
+  @font-face{font-family:"Inter";font-weight:600;src:url("../assets/fonts/inter-latin-600-normal.woff2") format("woff2")}
+  @font-face{font-family:"Inter";font-weight:700;src:url("../assets/fonts/inter-latin-700-normal.woff2") format("woff2")}
+  @font-face{font-family:"JBMono";font-weight:500;src:url("../assets/fonts/jetbrains-mono-latin-500-normal.woff2") format("woff2")}
   *{margin:0;padding:0;box-sizing:border-box}
   html,body{width:1920px;height:1080px;overflow:hidden}
-  body{font-family:"Geist",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  body{font-family:"Inter",system-ui,sans-serif;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
   .clip{position:absolute;top:0;left:0}
+  .display{font-family:"Grotesk","Inter",sans-serif}
+  .mono{font-family:"JBMono",monospace}
   .bg-glow{position:absolute;inset:0;background:
     radial-gradient(640px 380px at 22% 80%,rgba(7,155,142,0.30),transparent 60%),
     radial-gradient(520px 320px at 82% 16%,rgba(7,155,142,0.18),transparent 60%);}
@@ -20,22 +24,22 @@
   .shield{color:#079B8E;display:grid;place-items:center;background:rgba(7,155,142,0.12);
     border:2px solid rgba(7,155,142,0.5);border-radius:22px;padding:18px}
   .brand-lockup.small .shield{border-radius:14px;padding:11px}
-  .wordmark{font-size:76px;font-weight:800;letter-spacing:-0.03em}
+  .wordmark{font-family:"Grotesk",sans-serif;font-size:74px;font-weight:700;letter-spacing:-0.02em}
   .brand-lockup.small .wordmark{font-size:50px}
-  /* caption pill (top:auto so .clip's top:0 doesn't stretch it vertically) */
-  .caption{left:96px;bottom:90px;top:auto;width:max-content;max-width:1240px;display:flex;flex-direction:column;gap:14px;
-    padding:24px 32px;border-radius:22px;background:rgba(14,27,34,0.82);
-    box-shadow:0 24px 60px rgba(0,0,0,0.34);border:1px solid rgba(255,255,255,0.08)}
-  .caption.alert{background:rgba(120,26,14,0.86);border-color:rgba(255,170,150,0.20)}
-  .cap-kicker{align-self:flex-start;font-family:"Geist Mono",monospace;font-weight:500;font-size:19px;
+  /* caption — TOP-LEFT so it never covers the composer / review panel / banner */
+  .caption{left:80px;top:128px;bottom:auto;width:max-content;max-width:1000px;display:flex;flex-direction:column;gap:13px;
+    padding:22px 28px;border-radius:20px;background:rgba(14,27,34,0.86);
+    box-shadow:0 22px 55px rgba(0,0,0,0.34);border:1px solid rgba(255,255,255,0.09)}
+  .caption.alert{background:rgba(120,26,14,0.88);border-color:rgba(255,170,150,0.22)}
+  .cap-kicker{align-self:flex-start;font-family:"JBMono",monospace;font-weight:500;font-size:18px;
     letter-spacing:0.16em;text-transform:uppercase;color:#079B8E;padding:5px 12px;border-radius:999px;
     background:rgba(7,155,142,0.14);border:1px solid rgba(7,155,142,0.34)}
   .caption.alert .cap-kicker{color:#FF9B85;background:rgba(255,120,90,0.16);border-color:rgba(255,120,90,0.4)}
-  .cap-text{color:#fff;font-weight:600;font-size:47px;line-height:1.16;letter-spacing:-0.01em}
-  /* brand chip (continuity) — left:auto so .clip's left:0 doesn't stretch it */
-  .chip{right:60px;left:auto;top:54px;display:flex;align-items:center;gap:12px;color:#fff;
-    padding:14px 22px;border-radius:999px;background:rgba(14,27,34,0.72);border:1px solid rgba(255,255,255,0.10);
-    font-weight:700;font-size:28px;box-shadow:0 12px 30px rgba(0,0,0,0.25)}
+  .cap-text{font-family:"Grotesk","Inter",sans-serif;color:#fff;font-weight:600;font-size:42px;line-height:1.18;letter-spacing:-0.005em}
+  /* brand chip — left:auto so .clip's left:0 doesn't stretch it */
+  .chip{right:56px;left:auto;top:50px;display:flex;align-items:center;gap:11px;color:#fff;
+    font-family:"Grotesk",sans-serif;padding:13px 20px;border-radius:999px;background:rgba(14,27,34,0.78);
+    border:1px solid rgba(255,255,255,0.12);font-weight:600;font-size:26px;box-shadow:0 12px 30px rgba(0,0,0,0.28)}
   .chip .shield{padding:7px;border-radius:10px}
  html,body{background:radial-gradient(1200px 700px at 50% 28%, #05655C 0%, #0E1B22 60%, #060d11 100%)}</style></head>
 <body><div id="root" data-composition-id="card-intro" data-start="0" data-duration="3.6" data-width="1920" data-height="1080">
@@ -43,8 +47,8 @@
       <div class="clip" data-start="0" data-duration="3.6" data-track-index="0" style="display:grid;place-items:center;width:1920px;height:1080px;color:#fff;text-align:center">
         <div>
           <div class="brand-lockup"><div class="shield"><svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg></div><div class="wordmark">PrivacyLens</div></div>
-          <div class="intro-tag" style="margin-top:46px;font-size:60px;font-weight:700;letter-spacing:-0.02em">See what AI sees — <em style="color:#079B8E;font-style:italic">before</em> AI sees it</div>
-          <div class="intro-sub" style="margin-top:26px;font-size:30px;color:rgba(255,255,255,0.66);font-family:'Geist Mono',monospace">On-device personal-data detection for every AI chat</div>
+          <div class="intro-tag display" style="margin-top:46px;font-size:60px;font-weight:600;letter-spacing:-0.015em">See what AI sees — <em style="color:#079B8E;font-style:italic">before</em> AI sees it</div>
+          <div class="intro-sub mono" style="margin-top:26px;font-size:28px;color:rgba(255,255,255,0.66)">On-device personal-data detection for every AI chat</div>
         </div>
       </div>
 </div>

@@ -12,7 +12,22 @@ A privacy-first browser extension and web app that intercepts content before it 
 
 ## Demo
 
-![PrivacyLens - Real-time PII detection and redaction interface](docs/images/demo-screenshot.png)
+**▶ [Watch the 72-second demo video](demo-video/privacylens-demo.mp4)** — real-time
+text detection and the ethics gate, PDF/image redaction with before/after, the
+Chrome extension blocking a send on a live AI chat, and the side-panel review.
+
+[![PrivacyLens demo video](docs/images/demo-poster.png)](demo-video/privacylens-demo.mp4)
+
+The video is built reproducibly with [HyperFrames](https://github.com/heygen-com/hyperframes)
+motion graphics composited over real screen-recordings of the app — see
+[demo-video/README.md](demo-video/README.md).
+
+### Try it yourself
+
+```bash
+npm install && npm run build && npm run server
+# Open http://localhost:3001/demo  — works with or without an API key
+```
 
 ## Overview
 

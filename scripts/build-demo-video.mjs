@@ -107,17 +107,23 @@ if (!process.env.SKIP_PRE) {
 for (const s of scenes) if (s.kind === "card") s.clipDur = s.dur;
 
 // ------------------------------------------------------- shared comp styling
-const STYLE = `
-  @font-face{font-family:"Geist";font-weight:400;src:url("../assets/fonts/geist-sans-latin-400-normal.woff2") format("woff2")}
-  @font-face{font-family:"Geist";font-weight:500;src:url("../assets/fonts/geist-sans-latin-500-normal.woff2") format("woff2")}
-  @font-face{font-family:"Geist";font-weight:600;src:url("../assets/fonts/geist-sans-latin-600-normal.woff2") format("woff2")}
-  @font-face{font-family:"Geist";font-weight:700;src:url("../assets/fonts/geist-sans-latin-700-normal.woff2") format("woff2")}
-  @font-face{font-family:"Geist";font-weight:800;src:url("../assets/fonts/geist-sans-latin-800-normal.woff2") format("woff2")}
-  @font-face{font-family:"Geist Mono";font-weight:500;src:url("../assets/fonts/geist-mono-latin-500-normal.woff2") format("woff2")}
+const FONTS = `
+  @font-face{font-family:"Grotesk";font-weight:500;src:url("../assets/fonts/space-grotesk-latin-500-normal.woff2") format("woff2")}
+  @font-face{font-family:"Grotesk";font-weight:600;src:url("../assets/fonts/space-grotesk-latin-600-normal.woff2") format("woff2")}
+  @font-face{font-family:"Grotesk";font-weight:700;src:url("../assets/fonts/space-grotesk-latin-700-normal.woff2") format("woff2")}
+  @font-face{font-family:"Inter";font-weight:400;src:url("../assets/fonts/inter-latin-400-normal.woff2") format("woff2")}
+  @font-face{font-family:"Inter";font-weight:500;src:url("../assets/fonts/inter-latin-500-normal.woff2") format("woff2")}
+  @font-face{font-family:"Inter";font-weight:600;src:url("../assets/fonts/inter-latin-600-normal.woff2") format("woff2")}
+  @font-face{font-family:"Inter";font-weight:700;src:url("../assets/fonts/inter-latin-700-normal.woff2") format("woff2")}
+  @font-face{font-family:"JBMono";font-weight:500;src:url("../assets/fonts/jetbrains-mono-latin-500-normal.woff2") format("woff2")}`;
+
+const STYLE = `${FONTS}
   *{margin:0;padding:0;box-sizing:border-box}
   html,body{width:${W}px;height:${H}px;overflow:hidden}
-  body{font-family:"Geist",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  body{font-family:"Inter",system-ui,sans-serif;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
   .clip{position:absolute;top:0;left:0}
+  .display{font-family:"Grotesk","Inter",sans-serif}
+  .mono{font-family:"JBMono",monospace}
   .bg-glow{position:absolute;inset:0;background:
     radial-gradient(640px 380px at 22% 80%,rgba(7,155,142,0.30),transparent 60%),
     radial-gradient(520px 320px at 82% 16%,rgba(7,155,142,0.18),transparent 60%);}
@@ -126,22 +132,22 @@ const STYLE = `
   .shield{color:${TEAL};display:grid;place-items:center;background:rgba(7,155,142,0.12);
     border:2px solid rgba(7,155,142,0.5);border-radius:22px;padding:18px}
   .brand-lockup.small .shield{border-radius:14px;padding:11px}
-  .wordmark{font-size:76px;font-weight:800;letter-spacing:-0.03em}
+  .wordmark{font-family:"Grotesk",sans-serif;font-size:74px;font-weight:700;letter-spacing:-0.02em}
   .brand-lockup.small .wordmark{font-size:50px}
-  /* caption pill (top:auto so .clip's top:0 doesn't stretch it vertically) */
-  .caption{left:96px;bottom:90px;top:auto;width:max-content;max-width:1240px;display:flex;flex-direction:column;gap:14px;
-    padding:24px 32px;border-radius:22px;background:rgba(14,27,34,0.82);
-    box-shadow:0 24px 60px rgba(0,0,0,0.34);border:1px solid rgba(255,255,255,0.08)}
-  .caption.alert{background:rgba(120,26,14,0.86);border-color:rgba(255,170,150,0.20)}
-  .cap-kicker{align-self:flex-start;font-family:"Geist Mono",monospace;font-weight:500;font-size:19px;
+  /* caption — TOP-LEFT so it never covers the composer / review panel / banner */
+  .caption{left:80px;top:128px;bottom:auto;width:max-content;max-width:1000px;display:flex;flex-direction:column;gap:13px;
+    padding:22px 28px;border-radius:20px;background:rgba(14,27,34,0.86);
+    box-shadow:0 22px 55px rgba(0,0,0,0.34);border:1px solid rgba(255,255,255,0.09)}
+  .caption.alert{background:rgba(120,26,14,0.88);border-color:rgba(255,170,150,0.22)}
+  .cap-kicker{align-self:flex-start;font-family:"JBMono",monospace;font-weight:500;font-size:18px;
     letter-spacing:0.16em;text-transform:uppercase;color:${TEAL};padding:5px 12px;border-radius:999px;
     background:rgba(7,155,142,0.14);border:1px solid rgba(7,155,142,0.34)}
   .caption.alert .cap-kicker{color:#FF9B85;background:rgba(255,120,90,0.16);border-color:rgba(255,120,90,0.4)}
-  .cap-text{color:#fff;font-weight:600;font-size:47px;line-height:1.16;letter-spacing:-0.01em}
-  /* brand chip (continuity) — left:auto so .clip's left:0 doesn't stretch it */
-  .chip{right:60px;left:auto;top:54px;display:flex;align-items:center;gap:12px;color:#fff;
-    padding:14px 22px;border-radius:999px;background:rgba(14,27,34,0.72);border:1px solid rgba(255,255,255,0.10);
-    font-weight:700;font-size:28px;box-shadow:0 12px 30px rgba(0,0,0,0.25)}
+  .cap-text{font-family:"Grotesk","Inter",sans-serif;color:#fff;font-weight:600;font-size:42px;line-height:1.18;letter-spacing:-0.005em}
+  /* brand chip — left:auto so .clip's left:0 doesn't stretch it */
+  .chip{right:56px;left:auto;top:50px;display:flex;align-items:center;gap:11px;color:#fff;
+    font-family:"Grotesk",sans-serif;padding:13px 20px;border-radius:999px;background:rgba(14,27,34,0.78);
+    border:1px solid rgba(255,255,255,0.12);font-weight:600;font-size:26px;box-shadow:0 12px 30px rgba(0,0,0,0.28)}
   .chip .shield{padding:7px;border-radius:10px}
 `;
 
@@ -174,8 +180,8 @@ function genCard(s) {
       <div class="clip" data-start="0" data-duration="${round(dur)}" data-track-index="0" style="display:grid;place-items:center;width:${W}px;height:${H}px;color:#fff;text-align:center">
         <div>
           <div class="brand-lockup"><div class="shield">${shield(64)}</div><div class="wordmark">PrivacyLens</div></div>
-          <div class="intro-tag" style="margin-top:46px;font-size:60px;font-weight:700;letter-spacing:-0.02em">See what AI sees — <em style="color:${TEAL};font-style:italic">before</em> AI sees it</div>
-          <div class="intro-sub" style="margin-top:26px;font-size:30px;color:rgba(255,255,255,0.66);font-family:'Geist Mono',monospace">On-device personal-data detection for every AI chat</div>
+          <div class="intro-tag display" style="margin-top:46px;font-size:60px;font-weight:600;letter-spacing:-0.015em">See what AI sees — <em style="color:${TEAL};font-style:italic">before</em> AI sees it</div>
+          <div class="intro-sub mono" style="margin-top:26px;font-size:28px;color:rgba(255,255,255,0.66)">On-device personal-data detection for every AI chat</div>
         </div>
       </div>`;
     tl = `tl.from(".shield",{scale:0.6,opacity:0,duration:0.7,ease:"back.out(1.7)"},0.15);
@@ -190,8 +196,8 @@ tl.to("#root",{opacity:1,duration:0.01},${round(dur - XF)});tl.to("#root",{opaci
     inner = `<div class="bg-glow"></div>
       <div class="clip" data-start="0" data-duration="${round(dur)}" data-track-index="0" style="display:grid;place-items:center;width:${W}px;height:${H}px;color:#fff;text-align:center">
         <div>
-          <div class="section-chip" style="display:inline-flex;align-items:center;gap:10px;color:${TEAL};font-family:'Geist Mono',monospace;font-size:22px;letter-spacing:0.12em;text-transform:uppercase;padding:10px 18px;border-radius:999px;background:rgba(7,155,142,0.12);border:1px solid rgba(7,155,142,0.4)">${shield(22)} PrivacyLens Extension</div>
-          <div class="section-title" style="margin-top:30px;font-size:72px;font-weight:800;letter-spacing:-0.03em">${esc(s.title)}</div>
+          <div class="section-chip mono" style="display:inline-flex;align-items:center;gap:10px;color:${TEAL};font-size:21px;letter-spacing:0.12em;text-transform:uppercase;padding:10px 18px;border-radius:999px;background:rgba(7,155,142,0.12);border:1px solid rgba(7,155,142,0.4)">${shield(22)} PrivacyLens Extension</div>
+          <div class="section-title display" style="margin-top:30px;font-size:70px;font-weight:700;letter-spacing:-0.02em">${esc(s.title)}</div>
           <div class="section-sub" style="margin-top:22px;font-size:28px;color:rgba(255,255,255,0.7);max-width:1200px;margin-left:auto;margin-right:auto;line-height:1.4">${esc(s.subtitle)}</div>
           <div class="logo-row" style="margin-top:44px;display:flex;gap:16px;justify-content:center;flex-wrap:wrap">${pills}</div>
         </div>
@@ -208,12 +214,12 @@ tl.to("#root",{opacity:0,duration:${XF},ease:"power1.in"},${round(dur - XF)});`;
     <div class="clip" data-start="0" data-duration="${round(dur)}" data-track-index="0" style="display:grid;place-items:center;width:${W}px;height:${H}px;color:#fff;text-align:center">
       <div>
         <div class="brand-lockup small"><div class="shield">${shield(44)}</div><div class="wordmark">PrivacyLens</div></div>
-        <div class="outro-line" style="margin-top:48px;font-size:58px;font-weight:700;line-height:1.22;letter-spacing:-0.02em">Your data never leaves your device<br/>until <em style="color:${TEAL};font-style:italic">you</em> approve it.</div>
+        <div class="outro-line display" style="margin-top:48px;font-size:56px;font-weight:600;line-height:1.22;letter-spacing:-0.015em">Your data never leaves your device<br/>until <em style="color:${TEAL};font-style:italic">you</em> approve it.</div>
         <div class="outro-cta" style="margin-top:46px;display:flex;gap:20px;justify-content:center">
-          <span class="cta" style="font-size:30px;font-weight:700;padding:20px 38px;border-radius:16px;background:${TEAL};color:#fff;box-shadow:0 18px 40px rgba(7,155,142,0.4)">Try the live demo</span>
-          <span class="cta" style="font-size:30px;font-weight:700;padding:20px 38px;border-radius:16px;color:#fff;border:2px solid rgba(255,255,255,0.3)">Get the Chrome extension</span>
+          <span class="cta display" style="font-size:29px;font-weight:600;padding:20px 38px;border-radius:16px;background:${TEAL};color:#fff;box-shadow:0 18px 40px rgba(7,155,142,0.4)">Try the live demo</span>
+          <span class="cta display" style="font-size:29px;font-weight:600;padding:20px 38px;border-radius:16px;color:#fff;border:2px solid rgba(255,255,255,0.3)">Get the Chrome extension</span>
         </div>
-        <div class="outro-foot" style="margin-top:40px;font-family:'Geist Mono',monospace;font-size:24px;color:rgba(255,255,255,0.5);letter-spacing:0.04em">Runs on-device · openai/privacy-filter · No telemetry</div>
+        <div class="outro-foot mono" style="margin-top:40px;font-size:23px;color:rgba(255,255,255,0.5);letter-spacing:0.04em">Runs on-device · openai/privacy-filter · No telemetry</div>
       </div>
     </div>`;
   tl = `tl.from(".brand-lockup",{y:20,opacity:0,duration:0.6,ease:"power3.out"},0.2);
@@ -227,13 +233,19 @@ function genOverlay(s) {
   const dur = s.clipDur;
   const els = [];
   const tl = [];
-  // persistent brand chip
-  els.push(`<div class="clip chip" data-start="0" data-duration="${round(dur)}" data-track-index="40"><div class="shield">${shield(22)}</div>PrivacyLens</div>`);
-  tl.push(`tl.from(".chip",{opacity:0,y:-12,duration:0.5,ease:"power2.out"},0.1);`);
+  // Brand chip only on the extension scene (third-party site) — the web-demo
+  // app already shows PrivacyLens branding, so a chip there is redundant.
+  if (s.id === "ext") {
+    els.push(`<div class="clip chip" data-start="0" data-duration="${round(dur)}" data-track-index="40"><div class="shield">${shield(22)}</div>PrivacyLens active</div>`);
+    tl.push(`tl.from(".chip",{opacity:0,y:-12,duration:0.5,ease:"power2.out"},0.1);`);
+  }
+  // The extension scene (Nimbus) has a 264px left sidebar — shift its caption
+  // right to clear it. Web-demo scenes have no left chrome.
+  const leftStyle = s.id === "ext" ? ' style="left:300px"' : "";
   s.captions.forEach((c, i) => {
     const id = `cap${i}`;
     const start = round(c.from), d = round(c.to - c.from);
-    els.push(`<div id="${id}" class="clip caption ${c.tone === "alert" ? "alert" : ""}" data-start="${start}" data-duration="${d}" data-track-index="${10 + i}">
+    els.push(`<div id="${id}" class="clip caption ${c.tone === "alert" ? "alert" : ""}"${leftStyle} data-start="${start}" data-duration="${d}" data-track-index="${10 + i}">
       ${c.kicker ? `<span class="cap-kicker">${esc(c.kicker)}</span>` : ""}<span class="cap-text">${esc(c.text)}</span></div>`);
     tl.push(`tl.fromTo("#${id}",{opacity:0},{opacity:1,duration:0.32,ease:"power1.out"},${start});`);
     tl.push(`tl.from("#${id} .cap-text",{y:18,opacity:0,duration:0.45,ease:"power3.out"},${start});`);
@@ -246,14 +258,12 @@ function genOverlay(s) {
 function genPanelOverlay(s) {
   const dur = s.clipDur;
   const c = s.caption;
-  const els = `<div class="clip chip" data-start="0" data-duration="${round(dur)}" data-track-index="40"><div class="shield">${shield(22)}</div>PrivacyLens</div>
-    <div id="pc" class="clip" data-start="0" data-duration="${round(dur)}" data-track-index="10" style="left:120px;top:362px;width:760px;display:flex;flex-direction:column;gap:22px;color:#fff">
+  const els = `<div id="pc" class="clip" data-start="0" data-duration="${round(dur)}" data-track-index="10" style="left:120px;top:352px;width:780px;display:flex;flex-direction:column;gap:22px;color:#fff">
       <span class="cap-kicker" style="align-self:flex-start">${esc(c.kicker)}</span>
-      <span style="font-size:62px;font-weight:800;letter-spacing:-0.02em;line-height:1.08">${esc(c.text)}</span>
-      <span style="font-size:28px;color:rgba(255,255,255,0.7);line-height:1.45">${esc(c.sub)}</span>
+      <span class="display" style="font-size:60px;font-weight:700;letter-spacing:-0.02em;line-height:1.08">${esc(c.text)}</span>
+      <span style="font-size:27px;color:rgba(255,255,255,0.72);line-height:1.45">${esc(c.sub)}</span>
     </div>`;
-  const tl = `tl.from(".chip",{opacity:0,y:-12,duration:0.5,ease:"power2.out"},0.1);
-tl.from("#pc",{x:-50,opacity:0,duration:0.6,ease:"power3.out"},0.2);
+  const tl = `tl.from("#pc",{x:-50,opacity:0,duration:0.6,ease:"power3.out"},0.2);
 tl.to("#pc",{opacity:1,duration:0.01},${round(dur - XF)});`;
   return compDoc(`ov-${s.id}`, dur, "transparent", els, tl);
 }
