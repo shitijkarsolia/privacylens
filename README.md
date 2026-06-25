@@ -195,11 +195,8 @@ Nothing leaves the browser.
 
 ```bash
 npm run build:pages   # builds dist/ for static hosting + 404 SPA fallback + extension zip
-# Deploy dist/ to GitHub Pages, Netlify, Vercel static, etc.
+# Deploy dist/ to Netlify, Vercel static hosting, S3, etc.
 ```
-
-A GitHub Actions workflow (`.github/workflows/deploy-pages.yml`) publishes
-the demo to GitHub Pages on every push to `main`.
 
 ### Development Mode
 
