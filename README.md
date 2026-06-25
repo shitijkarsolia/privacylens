@@ -12,11 +12,11 @@ A privacy-first browser extension and web app that intercepts content before it 
 
 ## Demo
 
-**▶ [Play the 72-second demo video](https://github.com/shitijkarsolia/privacylens/raw/main/demo-video/privacylens-demo.mp4)** — real-time
+**▶ [Play the 72-second demo video](https://github.com/user-attachments/assets/d2437a53-3c6c-4e4d-ac08-8698190dcdc9)** — real-time
 text detection and the ethics gate, PDF/image redaction with before/after, the
 Chrome extension blocking a send on a live AI chat, and the side-panel review.
 
-[![PrivacyLens demo video](docs/images/demo-poster.png)](https://github.com/shitijkarsolia/privacylens/raw/main/demo-video/privacylens-demo.mp4)
+https://github.com/user-attachments/assets/d2437a53-3c6c-4e4d-ac08-8698190dcdc9
 
 The video is built reproducibly with [HyperFrames](https://github.com/heygen-com/hyperframes)
 motion graphics composited over real screen-recordings of the app — see
