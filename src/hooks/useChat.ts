@@ -23,12 +23,13 @@ export function useChat() {
       try {
         const allMessages = [...messages, userMsg];
         const apiMessages = messagesToAPI(allMessages);
-        const response = await sendChatMessage(apiMessages);
+        const reply = await sendChatMessage(apiMessages);
 
         const assistantMsg: Message = {
           id: crypto.randomUUID(),
           role: "assistant",
-          content: response,
+          content: reply.content,
+          via: reply.via,
           timestamp: Date.now(),
         };
 

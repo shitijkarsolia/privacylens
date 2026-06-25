@@ -1,6 +1,7 @@
 import { useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Message } from "../types";
+import { assetUrl } from "../lib/routes";
 
 const SAMPLE_FILES = [
   { name: "resume-emily-chen.pdf", label: "Resume PDF", type: "pdf" },
@@ -28,7 +29,7 @@ export function MessageList({ messages, loading, onSampleFile, onExampleText }: 
   const handleSampleClick = async (sample: (typeof SAMPLE_FILES)[0]) => {
     if (!onSampleFile) return;
     try {
-      const res = await fetch(`/samples/${sample.name}`);
+      const res = await fetch(assetUrl(`samples/${sample.name}`));
       const blob = await res.blob();
       const file = new File([blob], sample.name, { type: blob.type });
       onSampleFile([file]);
@@ -145,8 +146,16 @@ export function MessageList({ messages, loading, onSampleFile, onExampleText }: 
               >
                 <p className="whitespace-pre-wrap">{msg.content}</p>
                 {msg.redacted && (
-                  <p className="mt-2 text-xs opacity-60 font-mono">
+                  <p className="mt-2 flex items-center gap-1.5 text-xs opacity-60 font-mono">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                    </svg>
                     Personal data redacted before sending
+                  </p>
+                )}
+                {msg.role === "assistant" && msg.via === "demo" && (
+                  <p className="mt-2 text-[10px] uppercase tracking-wider font-mono text-[var(--color-text-secondary)]/70">
+                    Demo assistant - add an API key for live Claude replies
                   </p>
                 )}
               </div>

@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Nimbus AI - workspace chat</title>
+    <!--
+      Demo stand-in for an AI chat composer (used for the demo video and
+      extension fixtures). Exposes the same mock chrome plumbing as
+      extension-composer.html so the real content script can run here.
+    -->
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+        background: #ffffff;
+        color: #1f2328;
+        height: 100vh;
+        display: grid;
+        grid-template-columns: 264px 1fr;
+        overflow: hidden;
+      }
+
+      aside {
+        background: #0f1115;
+        color: #d6d9de;
+        padding: 18px 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 800;
+        font-size: 16px;
+        color: #fff;
+        padding: 6px 8px 18px;
+      }
+      .brand-mark {
+        width: 28px; height: 28px; border-radius: 8px;
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        display: grid; place-items: center; font-size: 15px; color: white;
+      }
+      .new-chat {
+        border: 1px solid #2c313a;
+        border-radius: 10px;
+        background: transparent;
+        color: #e8eaee;
+        padding: 10px 12px;
+        font-weight: 600;
+        font-size: 13px;
+        text-align: left;
+        cursor: pointer;
+      }
+      .nav-item {
+        padding: 9px 10px;
+        border-radius: 8px;
+        font-size: 13px;
+        color: #aab0ba;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .nav-item.active { background: #1c2027; color: #fff; }
+      .sidebar-footer {
+        margin-top: auto;
+        border-top: 1px solid #232830;
+        padding-top: 12px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 13px;
+        color: #c2c7cf;
+      }
+      .avatar {
+        width: 28px; height: 28px; border-radius: 50%;
+        background: #3b82f6; color: white;
+        display: grid; place-items: center; font-size: 12px; font-weight: 700;
+      }
+
+      main { display: flex; flex-direction: column; height: 100vh; }
+      header {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 14px 28px;
+        border-bottom: 1px solid #eceef1;
+        font-weight: 700; font-size: 15px;
+      }
+      header .model { color: #6b7280; font-weight: 500; font-size: 13px; }
+
+      #thread {
+        flex: 1;
+        overflow-y: auto;
+        padding: 36px 0 16px;
+      }
+      .row { max-width: 760px; margin: 0 auto 26px; padding: 0 24px; display: flex; gap: 14px; }
+      .row .who {
+        width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0;
+        display: grid; place-items: center; font-size: 13px; font-weight: 700; color: white;
+      }
+      .row.assistant .who { background: linear-gradient(135deg, #6366f1, #8b5cf6); }
+      .row.user .who { background: #0ea5e9; }
+      .row .bubble { font-size: 15px; line-height: 1.65; padding-top: 4px; white-space: pre-wrap; }
+
+      .composer-wrap { padding: 8px 24px 22px; }
+      .composer {
+        max-width: 760px; margin: 0 auto;
+        border: 1px solid #d9dde3;
+        border-radius: 16px;
+        background: #fff;
+        box-shadow: 0 6px 24px rgba(15, 23, 42, 0.06);
+        padding: 14px 14px 10px;
+      }
+      #prompt-textarea {
+        min-height: 52px;
+        max-height: 200px;
+        overflow-y: auto;
+        font-size: 15px;
+        line-height: 1.6;
+        outline: none;
+      }
+      #prompt-textarea:empty::before {
+        content: "Message Nimbus AI";
+        color: #9aa1ab;
+      }
+      .composer-bar {
+        display: flex; align-items: center; justify-content: space-between;
+        margin-top: 10px;
+      }
+      .composer-bar .left { display: flex; gap: 6px; color: #6b7280; }
+      .icon-btn {
+        width: 34px; height: 34px; border: 0; border-radius: 8px;
+        background: transparent; color: #6b7280; font-size: 16px; cursor: pointer;
+        display: grid; place-items: center;
+      }
+      .icon-btn:hover { background: #f3f4f6; }
+      #send-btn {
+        width: 36px; height: 36px; border: 0; border-radius: 10px;
+        background: #1f2328; color: white; cursor: pointer;
+        display: grid; place-items: center; font-size: 15px;
+      }
+      #send-btn:disabled { background: #e5e7eb; color: #9ca3af; }
+      .disclaimer {
+        max-width: 760px; margin: 10px auto 0; text-align: center;
+        font-size: 11.5px; color: #9aa1ab;
+      }
+      input[type="file"] { display: none; }
+    </style>
+  </head>
+  <body>
+    <aside>
+      <div class="brand"><span class="brand-mark">◈</span> Nimbus AI</div>
+      <button class="new-chat">+ New chat</button>
+      <div class="nav-item active">Contract review help</div>
+      <div class="nav-item">Quarterly report summary</div>
+      <div class="nav-item">Travel itinerary ideas</div>
+      <div class="nav-item">Email drafting</div>
+      <div class="sidebar-footer"><span class="avatar">AP</span> Aisha P.</div>
+    </aside>
+
+    <main>
+      <header>
+        <div>Contract review help <span class="model">Nimbus 4.5</span></div>
+        <div class="model">Workspace</div>
+      </header>
+
+      <div id="thread">
+        <div class="row assistant">
+          <div class="who">◈</div>
+          <div class="bubble">Of course! Please share the details or paste the document here and I will take a look.</div>
+        </div>
+      </div>
+
+      <div class="composer-wrap">
+        <form id="chat-form" class="composer">
+          <div id="prompt-textarea" contenteditable="true"></div>
+          <div class="composer-bar">
+            <div class="left">
+              <button type="button" class="icon-btn" title="Attach">⊕</button>
+              <button type="button" class="icon-btn" title="Voice">🎙</button>
+            </div>
+            <button id="send-btn" type="submit" aria-label="Send message">↑</button>
+          </div>
+        </form>
+        <p class="disclaimer">Nimbus AI can make mistakes. Consider checking important information.</p>
+        <input id="file-input" type="file" multiple />
+      </div>
+    </main>
+
+    <script>
+      window.__privacyLensState = null;
+      window.__privacyLensMessages = [];
+      window.__privacyLensRuntimeListener = null;
+      window.__submitCount = 0;
+      window.__attachedFiles = [];
+      window.__inputAttachedFiles = [];
+      window.__openPanelCount = 0;
+      window.__privacyLensOpenPanelShouldFail = false;
+
+      window.chrome = {
+        runtime: {
+          sendMessage(message, callback) {
+            window.__privacyLensMessages.push(message);
+
+            if (message.type === "PRIVACYLENS_STATE_UPDATE") {
+              window.__privacyLensState = message.state;
+              callback?.({ ok: true, state: message.state });
+              return;
+            }
+
+            if (message.type === "PRIVACYLENS_SCAN_TEXT") {
+              callback?.({ ok: true, entities: [], modelState: "regex-ready" });
+              return;
+            }
+
+            if (message.type === "PRIVACYLENS_OPEN_PANEL") {
+              window.__openPanelCount += 1;
+              callback?.({
+                ok: true,
+                opened: !window.__privacyLensOpenPanelShouldFail,
+                error: window.__privacyLensOpenPanelShouldFail
+                  ? "sidePanel.open unavailable in this context"
+                  : undefined,
+              });
+              return;
+            }
+
+            callback?.({ ok: true });
+          },
+          onMessage: {
+            addListener(listener) {
+              window.__privacyLensRuntimeListener = listener;
+            },
+            removeListener() {
+              window.__privacyLensRuntimeListener = null;
+            },
+          },
+        },
+      };
+
+      const thread = document.getElementById("thread");
+      const composer = document.getElementById("prompt-textarea");
+
+      document.getElementById("chat-form").addEventListener("submit", (event) => {
+        event.preventDefault();
+        window.__submitCount += 1;
+
+        const text = composer.innerText.trim();
+        if (text) {
+          const row = document.createElement("div");
+          row.className = "row user";
+          row.innerHTML = '<div class="who">AP</div><div class="bubble"></div>';
+          row.querySelector(".bubble").textContent = text;
+          thread.appendChild(row);
+          composer.textContent = "";
+          thread.scrollTop = thread.scrollHeight;
+        }
+      });
+
+      async function readFiles(event) {
+        return Promise.all(
+          Array.from(event.target.files || []).map(async (file) => ({
+            name: file.name,
+            type: file.type,
+            size: file.size,
+            text: file.type.startsWith("text/") ? await file.text() : "",
+          }))
+        );
+      }
+
+      document.getElementById("file-input").addEventListener("input", async (event) => {
+        window.__inputAttachedFiles = await readFiles(event);
+      });
+
+      document.getElementById("file-input").addEventListener("change", async (event) => {
+        window.__attachedFiles = await readFiles(event);
+      });
+    </script>
+  </body>
+</html>

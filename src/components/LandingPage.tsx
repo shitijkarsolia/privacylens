@@ -22,6 +22,7 @@ import {
   Zap,
 } from "lucide-react";
 import type { ReactNode } from "react";
+import { appPath } from "../lib/routes";
 
 const piiItems = [
   {
@@ -342,13 +343,20 @@ export function LandingPage() {
             })}
           </div>
 
-          <div className="mt-12 flex flex-wrap items-center gap-6">
+          <div className="mt-12 flex flex-wrap items-center gap-5">
             <a
-              href="/install"
+              href={appPath("demo")}
               className="inline-flex h-13 items-center gap-3 rounded-lg bg-[#079B8E] px-7 py-4 text-base font-bold text-white shadow-[0_16px_34px_rgba(7,155,142,0.24)] transition hover:bg-[#067F75]"
             >
-              Protect Your Privacy for Free
+              Try the live demo
               <ArrowRight size={20} />
+            </a>
+            <a
+              href={appPath("install")}
+              className="inline-flex h-13 items-center gap-3 rounded-lg border-2 border-[#079B8E] bg-white px-7 py-[14px] text-base font-bold text-[#079B8E] transition hover:bg-[#F1FBF9]"
+            >
+              <Chrome size={20} />
+              Get the extension
             </a>
             <a href="#how-it-works" className="inline-flex items-center gap-3 text-sm font-semibold text-[#079B8E]">
               See how it works

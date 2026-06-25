@@ -58,7 +58,7 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["sidepanel.html", "assets/*", "extension/*.js", "icons/*"],
+      "resources": ["sidepanel.html", "assets/*", "extension/*.js", "icons/*", "tesseract/*"],
       "matches": [
         "https://chatgpt.com/*",
         "https://chat.openai.com/*",

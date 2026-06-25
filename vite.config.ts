@@ -4,6 +4,9 @@ import tailwindcss from "@tailwindcss/vite";
 import { resolve } from "node:path";
 
 export default defineConfig({
+  // Set PAGES_BASE (e.g. /privacylens/) when building for a subpath host
+  // such as GitHub Pages. Defaults to root for the local server/extension.
+  base: process.env.PAGES_BASE || "/",
   plugins: [react(), tailwindcss()],
   build: {
     rollupOptions: {

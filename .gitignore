@@ -1,4 +1,12 @@
-node_modules/
-dist/
-.env
 *.log
+.env
+demo-video/clips/
+demo-video/hyperframes/assets/clips/
+demo-video/hyperframes/node_modules/
+demo-video/renders/
+demo-video/segments/
+dist/
+node_modules/
+output/
+privacylens-extension.zip
+public/tesseract/

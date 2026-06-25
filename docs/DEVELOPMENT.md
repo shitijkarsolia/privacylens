@@ -1,71 +1,124 @@
 # Development Guide
 
-Practical information for developing, testing, and debugging PrivacyLens.
+Practical reference for developing, testing, building, and navigating the
+codebase. See also: [ARCHITECTURE.md](ARCHITECTURE.md), [MODELS.md](MODELS.md),
+[API.md](API.md), [DEPLOYMENT.md](DEPLOYMENT.md).
 
-## Test & Verification Commands
+## Prerequisites
 
-| Command | Description |
-|---------|-------------|
-| `npm run test:extension` | Runs the extension fixture test (loads extension in Chromium, verifies content script injection and composer interception) |
-| `npm run test:extension:background` | Tests the background service worker (model loading, message handling, state management) |
-| `npm run test:extension:files` | Tests the file scanner module (PDF and image PII detection via the extension pipeline) |
-| `npm run test:extension:sidepanel` | Tests the side panel UI (review workflow, entity display, redaction controls) |
-| `npm run test:demo` | Tests the demo website (landing page loads, file upload works, PII detection triggers) |
-| `npm run verify:extension` | Full verification suite that runs all extension checks end-to-end |
+- Node.js 18+ (Node 22 is used in CI; the demo-video tooling needs 22+ and FFmpeg)
+- npm
 
-All test scripts are located in `scripts/` and use Playwright with Chromium.
+## npm scripts
 
-## PII Severity Categories
+| Script | What it does |
+|---|---|
+| `npm run dev` | Vite dev server on `:5173` with HMR; proxies `/api` → `:3001` |
+| `npm run server` | Express API + static `dist/` on `:3001` (`tsx server.ts`) |
+| `npm run build` | `tsc -b` type-check + `vite build` → `dist/` (root base) |
+| `npm run build:pages` | Static build for subpath hosting + `404.html` + extension zip |
+| `npm run package:extension` | Zip the current `dist/` into `privacylens-extension.zip` |
+| `npm run preview` | Serve the built `dist/` with Vite's preview server |
+| `npm run verify:extension` | Full extension + demo verification suite (all checks below) |
+| `npm run test:extension` | Content-script fixture: blocking, highlight, redact-and-attach |
+| `npm run test:extension:background` | Background worker: state recovery, panel-open failure |
+| `npm run test:extension:files` | File scanner: PDF/image extraction + redacted artifacts |
+| `npm run test:extension:sidepanel` | Side-panel review UI states |
+| `npm run test:demo` | Demo website end-to-end (mocked APIs) |
 
-The detection engine classifies PII entities into three severity levels:
+> **`prebuild` / `predev` hook:** both run
+> [`scripts/prepare-local-assets.mjs`](../scripts/prepare-local-assets.mjs),
+> which stages the self-hosted Tesseract OCR runtime + `eng` language data into
+> `public/tesseract/` (downloaded once, then cached). This is why image OCR has
+> no CDN dependency.
 
-| Severity | Entity Types |
-|----------|-------------|
-| **High** | Account numbers, secrets/API keys, employee IDs, SSNs, credit card numbers |
-| **Medium** | Names, addresses |
-| **Low** | Emails, phone numbers, dates, URLs |
+## Helper scripts (`scripts/`)
 
-High-severity entities receive prominent visual highlighting in the review panel and are recommended for redaction by default.
+| Script | Purpose |
+|---|---|
+| `prepare-local-assets.mjs` | Stage Tesseract runtime + language data (build/dev hook) |
+| `package-extension.mjs` | Zip `dist/` into a loadable extension package |
+| `build-pages.mjs` | Root-base build (for the zip) + subpath build (for the site) + 404 |
+| `postbuild-pages.mjs` | Add `dist/404.html` SPA fallback and drop in the extension zip |
+| `qa-ui.mjs` | Drives the running app (`:3001`) through every flow, captures screenshots, asserts no overflow / correct states → `output/qa/` |
+| `test-static-demo.mjs` | Serves `dist/` with **no backend** and asserts the demo works **and makes zero external requests** |
+| `record-demo.mjs` | Screen-records the real app + extension flows for the demo video → `demo-video/clips/` |
+| `build-demo-video.mjs` | Builds the demo video (HyperFrames graphics + ffmpeg composite) → `demo-video/privacylens-demo.mp4` |
+| `verify-extension.mjs` | Orchestrates the `test:*` suite end-to-end |
 
-## Sample Files
+All test/QA scripts use Playwright + Chromium.
 
-The `public/samples/` directory contains 6 demo files for testing PII detection across formats:
-
-| File | Format | PII Content |
-|------|--------|-------------|
-| `business-card.png` | Image | Name, phone number, email, company address |
-| `hr-email.txt` | Text | Employee names, employee IDs, salary figures, SSN |
-| `invoice-wilson.pdf` | PDF | Name, billing address, account number |
-| `medical-intake.txt` | Text | Patient name, date of birth, SSN, phone, address, medical record number |
-| `registration-form.png` | Image | Name, address, date of birth, phone number, email |
-| `resume-emily-chen.pdf` | PDF | Name, email, phone, address, employment history, education |
-
-## Development Environment
-
-### Vite Dev Server
-
-In development mode (`npm run dev`), the Vite dev server runs on `http://localhost:5173` and proxies all `/api` requests to `localhost:3001` (the Express server). This allows the frontend to call the backend without CORS configuration during development.
-
-### Environment Variables
-
-| Variable | Required For | Description |
-|----------|-------------|-------------|
-| `ANTHROPIC_API_KEY` | Server | API key for Claude chat functionality. The server won't start without it. |
-
-### Running the Full Stack Locally
+## Running the full stack locally
 
 ```bash
-# Terminal 1: Start the API server
+# Terminal 1 — API server (key optional; without it, chat uses the demo assistant)
 ANTHROPIC_API_KEY=your-key npm run server
 
-# Terminal 2: Start the Vite dev server with HMR
+# Terminal 2 — Vite dev server with HMR
 npm run dev
+# App: http://localhost:5173   ·   /demo   ·   /install
 ```
 
-### Building for Production
+For a production-like run: `npm run build && npm run server`, then open
+`http://localhost:3001`.
 
-```bash
-npm run build
+## Repository map
+
+```
+server.ts                     Express API (/api/scan, /api/chat, /api/model-status) + static dist
+index.html / sidepanel.html   Web app + extension side-panel entry points
+public/
+  manifest.json               Chrome MV3 manifest
+  extension/                  content-script.js, background.js (committed, hand-written)
+  samples/                    6 demo files (PDF / image / text) with planted PII
+  tesseract/                  self-hosted OCR runtime (generated by prepare-local-assets)
+src/
+  App.tsx, main.tsx           Router (route → Landing / ChatPage / InstallPage)
+  components/                 ChatPage, MessageInput/List, ReviewPanel, BeforeAfterSlider,
+                              HighlightedText, ModelStatus, LandingPage, InstallPage
+  hooks/                      useModelLoader (tier selection), usePIIDetection, useChat
+  lib/
+    regex-scanner.ts          instant pattern detection (tier 3, always on)
+    browser-model.ts          in-browser WebGPU model (tier 2)
+    model-entities.ts         shared model→PIIEntity post-processing (server + browser)
+    upload-interceptor.ts     dual-scan + entity merge (specificity/confidence)
+    ethics-gate.ts            the hard block (blocked = entities.length > 0)
+    redaction-engine.ts       selective redaction to [LABEL] placeholders
+    pdf-scanner.ts / image-scanner.ts / visual-obfuscator.ts   file extraction + visual redaction
+    chat-api.ts / demo-assistant.ts   chat with keyless/static fallback
+    tesseract-config.ts / routes.ts   self-hosted OCR paths; base-path-aware routing
+  extension/                  model-scanner.ts, file-scanner.ts, sidepanel/main.tsx (built to dist/extension)
+  types.ts                    PIIEntity, severity map, redaction labels
+scripts/                      build / package / QA / test / demo-video tooling (table above)
+docs/                         this documentation set
+demo-video/                   demo video pipeline + rendered MP4 (see demo-video/README.md)
 ```
 
-This runs `tsc -b` (TypeScript type-checking) followed by `vite build` (bundling). The output goes to `dist/`, which serves as both the web app and the Chrome extension package.
+## PII severity categories
+
+| Severity | Entity types |
+|---|---|
+| **High** | SSN, credit card, account number, employee ID, secrets / API keys |
+| **Medium** | Name, address |
+| **Low** | Email, phone, date, URL |
+
+Defined in [`src/types.ts`](../src/types.ts) (`SEVERITY_MAP`). High-severity
+items are highlighted prominently and selected for redaction by default.
+
+## Sample files (`public/samples/`)
+
+| File | Format | Planted PII |
+|---|---|---|
+| `business-card.png` | Image | Name, phone, email, company address |
+| `registration-form.png` | Image | Name, address, DOB, phone, email |
+| `invoice-wilson.pdf` | PDF | Name, billing address, account number |
+| `resume-emily-chen.pdf` | PDF | Name, email, phone, address, history |
+| `hr-email.txt` | Text | Employee names/IDs, salary, SSN |
+| `medical-intake.txt` | Text | Patient name, DOB, SSN, phone, address, MRN |
+
+## Verification expectations
+
+Before considering a change done, the green bar is: `npm run build`,
+`npm run verify:extension`, and (for static/privacy changes)
+`node scripts/test-static-demo.mjs`. The demo video is rebuilt with
+`node scripts/build-demo-video.mjs` (see [demo-video/README.md](../demo-video/README.md)).

@@ -12,7 +12,22 @@ A privacy-first browser extension and web app that intercepts content before it 
 
 ## Demo
 
-![PrivacyLens - Real-time PII detection and redaction interface](docs/images/demo-screenshot.png)
+**▶ [Watch the 72-second demo video](demo-video/privacylens-demo.mp4)** — real-time
+text detection and the ethics gate, PDF/image redaction with before/after, the
+Chrome extension blocking a send on a live AI chat, and the side-panel review.
+
+[![PrivacyLens demo video](docs/images/demo-poster.png)](demo-video/privacylens-demo.mp4)
+
+The video is built reproducibly with [HyperFrames](https://github.com/heygen-com/hyperframes)
+motion graphics composited over real screen-recordings of the app — see
+[demo-video/README.md](demo-video/README.md).
+
+### Try it yourself
+
+```bash
+npm install && npm run build && npm run server
+# Open http://localhost:3001/demo  — works with or without an API key
+```
 
 ## Overview
 
@@ -142,9 +157,37 @@ The user must explicitly review each detected entity and choose to redact it, ke
 ```bash
 npm install
 npm run build
-ANTHROPIC_API_KEY=your-key npm run server
-# Open http://localhost:3001
+npm run server
+# Open http://localhost:3001  (landing)
+# Open http://localhost:3001/demo  (live chat demo)
 ```
+
+The server runs **with or without** an Anthropic API key:
+
+- **With `ANTHROPIC_API_KEY`** set, the in-app chat talks to Claude.
+- **Without a key**, chat replies come from a clearly labeled built-in demo
+  assistant, so the whole flow (detection, the ethics gate, redaction,
+  before/after previews) is fully explorable out of the box.
+
+```bash
+# Optional: enable live Claude responses
+ANTHROPIC_API_KEY=your-key npm run server
+```
+
+### Shareable static build (no server)
+
+The demo also runs as a fully static site with **zero backend** — PII
+detection falls back to the instant pattern scanner (plus the in-browser
+WebGPU model where available), and chat uses the local demo assistant.
+Nothing leaves the browser.
+
+```bash
+npm run build:pages   # builds dist/ for static hosting + 404 SPA fallback + extension zip
+# Deploy dist/ to GitHub Pages, Netlify, Vercel static, etc.
+```
+
+A GitHub Actions workflow (`.github/workflows/deploy-pages.yml`) publishes
+the demo to GitHub Pages on every push to `main`.
 
 ### Development Mode
 
@@ -166,25 +209,42 @@ npm run build
 # Chrome -> chrome://extensions -> Developer mode -> Load unpacked -> select ./dist
 ```
 
-For detailed installation and configuration steps, see [docs/INSTALL_EXTENSION.md](docs/INSTALL_EXTENSION.md).
+For detailed installation steps, see [docs/INSTALL_EXTENSION.md](docs/INSTALL_EXTENSION.md).
 
-For detailed test commands, sample file descriptions, and development notes, see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
+## Documentation
+
+Full technical documentation lives in [`docs/`](docs/):
+
+| Doc | What's inside |
+|---|---|
+| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design, the three detection tiers, runtime modes, data-flow diagrams |
+| [MODELS.md](docs/MODELS.md) | Every model used, where each runs, fallbacks, sizes, how to swap them |
+| [API.md](docs/API.md) | `/api/scan`, `/api/chat`, `/api/model-status` request/response reference |
+| [DEPLOYMENT.md](docs/DEPLOYMENT.md) | Hosting (full-stack, static, **Vercel/Netlify/Pages**) + **extension distribution** |
+| [DEVELOPMENT.md](docs/DEVELOPMENT.md) | All npm/helper scripts, repo map, testing, sample files |
+| [INSTALL_EXTENSION.md](docs/INSTALL_EXTENSION.md) | Step-by-step extension install |
+| [EXTENSION_STATUS.md](docs/EXTENSION_STATUS.md) | Extension capabilities, verification log, known limits |
+| [demo-video/README.md](demo-video/README.md) | How the demo video is recorded and rendered (HyperFrames + ffmpeg) |
 
 ## Project Structure
 
 ```
 src/
-  components/    # React UI components (chat, review panel, landing page)
-  hooks/         # Custom React hooks (chat, PII detection, model loading)
-  lib/           # Core detection and redaction logic
-  extension/     # Chrome extension source (model + file scanners)
+  components/    # React UI (chat, review panel, landing, install)
+  hooks/         # useModelLoader (detection tiers), usePIIDetection, useChat
+  lib/           # Detection, redaction, chat fallback, base-path routing
+  extension/     # Chrome extension source (model + file scanners, side panel)
 public/
   extension/     # Chrome MV3 scripts (content script, background)
-  samples/       # Demo sample files (PDFs, images, text)
-scripts/         # Playwright test scripts
-docs/            # Architecture, installation, and UX documentation
-server.ts        # Express API server (Claude proxy + PII scan endpoint)
+  samples/       # Demo sample files (PDFs, images, text) with planted PII
+  tesseract/     # Self-hosted OCR runtime (generated at build time)
+scripts/         # Build, package, QA, test, and demo-video tooling
+docs/            # Technical documentation (see index above)
+demo-video/      # Demo video pipeline + rendered MP4
+server.ts        # Express API server (Claude proxy + PII scan + status)
 ```
+
+A complete file-by-file map is in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#repository-map).
 
 ## Design Decisions & Tradeoffs
 
@@ -206,6 +266,7 @@ server.ts        # Express API server (Claude proxy + PII scan endpoint)
 - The server only receives approved or redacted content
 - File processing (PDF parsing, OCR) is entirely client-side
 - No telemetry, no analytics, no tracking
+- All personal data in `public/samples/` and the test scripts is **synthetic** (fictional names, SSNs, addresses, emails) — see [SECURITY.md](SECURITY.md)
 
 ## Built With
 

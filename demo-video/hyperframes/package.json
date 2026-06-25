@@ -1,0 +1,10 @@
+{
+  "name": "privacylens-demo-video",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npx --yes hyperframes@0.6.98 preview",
+    "check": "npx --yes hyperframes@0.6.98 lint && npx --yes hyperframes@0.6.98 validate",
+    "render": "npx --yes hyperframes@0.6.98 render -f 30 -q high -o ../privacylens-demo.mp4"
+  }
+}

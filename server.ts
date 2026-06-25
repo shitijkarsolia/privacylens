@@ -4,6 +4,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import fs from "fs";
+import { generateDemoReply } from "./src/lib/demo-assistant";
+import { toEntities } from "./src/lib/model-entities";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -12,7 +14,14 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: "10mb" }));
 
-const client = new Anthropic();
+// Without a key the server still runs: chat uses the local demo assistant
+// (clearly labeled in the UI) and PII scanning is unaffected.
+const client = process.env.ANTHROPIC_API_KEY ? new Anthropic() : null;
+if (!client) {
+  console.warn(
+    "ANTHROPIC_API_KEY not set - /api/chat will answer with the built-in demo assistant."
+  );
+}
 
 // --- PII Detection Model (loaded once at startup) ---
 let classifier: any = null;
@@ -40,43 +49,6 @@ async function loadPIIModel() {
 
 loadPIIModel();
 
-// Merge adjacent entities that are fragments of the same PII
-function mergeAdjacentEntities(entities: any[], text: string): any[] {
-  if (entities.length <= 1) return entities;
-
-  const sorted = [...entities].sort((a, b) => a.start - b.start);
-  const merged: any[] = [];
-
-  for (const entity of sorted) {
-    const last = merged[merged.length - 1];
-    if (!last) {
-      merged.push({ ...entity });
-      continue;
-    }
-
-    // Merge if adjacent (gap <= 3 chars of whitespace/punctuation) and compatible category
-    const gap = entity.start - last.end;
-    const gapText = gap > 0 ? text.slice(last.end, entity.start) : "";
-    const isAdjacent = gap <= 3 && /^[\s\-\/.,]*$/.test(gapText);
-    const isCompatible =
-      last.category === entity.category ||
-      (["account_number", "private_phone", "secret"].includes(last.category) &&
-        ["account_number", "private_phone", "secret"].includes(entity.category));
-
-    if (isAdjacent && isCompatible) {
-      const newEnd = Math.max(last.end, entity.end);
-      last.end = newEnd;
-      last.text = text.slice(last.start, newEnd).trim();
-      last.confidence = Math.max(last.confidence, entity.confidence);
-    } else {
-      merged.push({ ...entity });
-    }
-  }
-
-  // Filter out very low confidence fragments
-  return merged.filter((e) => e.confidence > 0.4 || e.text.length > 3);
-}
-
 // --- PII Scan Endpoint ---
 app.get("/api/model-status", (_req, res) => {
   if (modelReady) {
@@ -103,46 +75,7 @@ app.post("/api/scan", async (req, res) => {
     }
 
     const results = await classifier(text, { aggregation_strategy: "simple" });
-
-    const rawEntities = (results as any[]).map((r: any) => {
-      let category = "secret";
-      const eg = (r.entity_group || r.entity || "").toLowerCase();
-      if (eg.includes("person")) category = "private_person";
-      else if (eg.includes("email")) category = "private_email";
-      else if (eg.includes("phone")) category = "private_phone";
-      else if (eg.includes("address")) category = "private_address";
-      else if (eg.includes("date")) category = "private_date";
-      else if (eg.includes("url")) category = "private_url";
-      else if (eg.includes("account")) category = "account_number";
-      else if (eg.includes("secret")) category = "secret";
-
-      const word = (r.word || "").trim();
-
-      let start = r.start;
-      let end = r.end;
-      if (start === undefined || start === null) {
-        const idx = text.indexOf(word);
-        if (idx !== -1) {
-          start = idx;
-          end = idx + word.length;
-        } else {
-          start = 0;
-          end = word.length;
-        }
-      }
-
-      return {
-        category,
-        text: word,
-        start,
-        end,
-        confidence: r.score ?? 0.5,
-        source: "model",
-      };
-    });
-
-    // Merge adjacent/overlapping entities of compatible categories
-    const entities = mergeAdjacentEntities(rawEntities, text);
+    const entities = toEntities(results as any[], text);
 
     res.json({ entities });
   } catch (err: any) {
@@ -161,6 +94,11 @@ app.post("/api/chat", async (req, res) => {
       return;
     }
 
+    if (!client) {
+      res.json({ content: generateDemoReply(messages), via: "demo" });
+      return;
+    }
+
     const response = await client.messages.create({
       model: "claude-sonnet-4-20250514",
       max_tokens: 1024,
@@ -174,7 +112,7 @@ app.post("/api/chat", async (req, res) => {
 
     const textBlock = response.content.find((b: any) => b.type === "text");
     const content = textBlock && "text" in textBlock ? textBlock.text : "";
-    res.json({ content });
+    res.json({ content, via: "claude" });
   } catch (err: any) {
     console.error("Claude API error:", err?.message || err);
     res.status(500).json({ error: err?.message || "Internal server error" });
