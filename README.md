@@ -12,15 +12,27 @@ A privacy-first browser extension and web app that intercepts content before it 
 
 ## Demo
 
-**▶ [Watch the 72-second demo video](demo-video/privacylens-demo.mp4)** — real-time
+**▶ [Play the 72-second demo video](https://github.com/user-attachments/assets/d2437a53-3c6c-4e4d-ac08-8698190dcdc9)** — real-time
 text detection and the ethics gate, PDF/image redaction with before/after, the
 Chrome extension blocking a send on a live AI chat, and the side-panel review.
 
-[![PrivacyLens demo video](docs/images/demo-poster.png)](demo-video/privacylens-demo.mp4)
+https://github.com/user-attachments/assets/d2437a53-3c6c-4e4d-ac08-8698190dcdc9
 
 The video is built reproducibly with [HyperFrames](https://github.com/heygen-com/hyperframes)
 motion graphics composited over real screen-recordings of the app — see
 [demo-video/README.md](demo-video/README.md).
+
+## Screenshots
+
+| Local demo home | Review gate |
+|---|---|
+| ![PrivacyLens local demo home with sample files and local AI detection active](docs/images/screenshot-demo-home.jpg) | ![PrivacyLens review gate with detected personal data and redaction controls](docs/images/screenshot-review-gate.jpg) |
+
+| Redacted file flow | Extension send block |
+|---|---|
+| ![PrivacyLens attaching a redacted resume copy instead of the original file](docs/images/screenshot-file-redaction.jpg) | ![PrivacyLens Chrome extension pausing a sensitive send on a live AI chat page](docs/images/screenshot-extension-block.jpg) |
+
+![PrivacyLens side panel for reviewing and redacting detected personal data](docs/images/screenshot-side-panel.jpg)
 
 ### Try it yourself
 
@@ -183,11 +195,8 @@ Nothing leaves the browser.
 
 ```bash
 npm run build:pages   # builds dist/ for static hosting + 404 SPA fallback + extension zip
-# Deploy dist/ to GitHub Pages, Netlify, Vercel static, etc.
+# Deploy dist/ to Netlify, Vercel static hosting, S3, etc.
 ```
-
-A GitHub Actions workflow (`.github/workflows/deploy-pages.yml`) publishes
-the demo to GitHub Pages on every push to `main`.
 
 ### Development Mode
 

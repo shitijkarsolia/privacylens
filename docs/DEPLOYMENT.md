@@ -11,7 +11,7 @@ to function. Background: [ARCHITECTURE.md](ARCHITECTURE.md#runtime-modes-how-its
 | Command | Output | Use |
 |---|---|---|
 | `npm run build` | `dist/` at **root base** (`/`) | local full-stack server **and** the extension package |
-| `npm run build:pages` | `dist/` at **subpath base** + `dist/404.html` + `dist/privacylens-extension.zip` | static hosting under a subpath (e.g. GitHub Pages project site) |
+| `npm run build:pages` | `dist/` at **subpath base** + `dist/404.html` + `dist/privacylens-extension.zip` | static hosting under a subpath |
 | `npm run package:extension` | `privacylens-extension.zip` | a loadable extension zip (from the current `dist/`) |
 
 > **Base path matters.** The extension's `sidepanel.html` references `/assets/…`,
@@ -41,7 +41,7 @@ Only `ANTHROPIC_API_KEY` is read from the environment.
 
 ---
 
-## 2. Static hosting (GitHub Pages / Vercel / Netlify / S3)
+## 2. Static hosting (Vercel / Netlify / S3)
 
 No backend. Detection falls back to the **in-browser WebGPU model** (or regex),
 chat uses the **demo assistant**. Everything stays in the browser — verified by
@@ -52,12 +52,6 @@ Two requirements for any static host:
 1. Build at the right base (root domain → `npm run build`; subpath → `build:pages`).
 2. An **SPA fallback** so `/demo` and `/install` resolve to `index.html`
    (`build:pages` writes `dist/404.html`; other hosts use a rewrite — below).
-
-### GitHub Pages (built-in)
-[`.github/workflows/deploy-pages.yml`](../.github/workflows/deploy-pages.yml)
-runs `build-pages.mjs` with the repo name as the base and publishes `dist/` on
-every push to `main` (also `workflow_dispatch`). The install page's download
-button serves the root-base extension zip from `dist/`.
 
 ### Vercel
 Static frontend works out of the box. Build at root base and add an SPA rewrite:

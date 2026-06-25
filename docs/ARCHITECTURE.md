@@ -101,7 +101,7 @@ weakens — at worst it falls back to instant pattern matching.
 | Mode | What's running | Detection | Chat |
 |---|---|---|---|
 | **Full stack** | `npm run server` serving `dist/` + the 3 API routes | Tier 1 (server CPU model) | Claude if `ANTHROPIC_API_KEY` set, else demo assistant |
-| **Static** (Pages / Vercel / Netlify) | `dist/` only, no backend | Tier 2 (WebGPU) or Tier 3 (regex) | Demo assistant (or add a serverless `/api/chat` for Claude) |
+| **Static** (Vercel / Netlify / S3) | `dist/` only, no backend | Tier 2 (WebGPU) or Tier 3 (regex) | Demo assistant (or add a serverless `/api/chat` for Claude) |
 | **Extension** | MV3 extension installed in the browser | In-browser model + regex (no server) | N/A — guards the host site's own chat |
 
 Both the detector tier and the chat backend **fall back automatically** — the
