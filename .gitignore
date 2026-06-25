@@ -10,3 +10,4 @@ node_modules/
 output/
 privacylens-extension.zip
 public/tesseract/
+.vercel
