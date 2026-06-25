@@ -209,25 +209,42 @@ npm run build
 # Chrome -> chrome://extensions -> Developer mode -> Load unpacked -> select ./dist
 ```
 
-For detailed installation and configuration steps, see [docs/INSTALL_EXTENSION.md](docs/INSTALL_EXTENSION.md).
+For detailed installation steps, see [docs/INSTALL_EXTENSION.md](docs/INSTALL_EXTENSION.md).
 
-For detailed test commands, sample file descriptions, and development notes, see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
+## Documentation
+
+Full technical documentation lives in [`docs/`](docs/):
+
+| Doc | What's inside |
+|---|---|
+| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design, the three detection tiers, runtime modes, data-flow diagrams |
+| [MODELS.md](docs/MODELS.md) | Every model used, where each runs, fallbacks, sizes, how to swap them |
+| [API.md](docs/API.md) | `/api/scan`, `/api/chat`, `/api/model-status` request/response reference |
+| [DEPLOYMENT.md](docs/DEPLOYMENT.md) | Hosting (full-stack, static, **Vercel/Netlify/Pages**) + **extension distribution** |
+| [DEVELOPMENT.md](docs/DEVELOPMENT.md) | All npm/helper scripts, repo map, testing, sample files |
+| [INSTALL_EXTENSION.md](docs/INSTALL_EXTENSION.md) | Step-by-step extension install |
+| [EXTENSION_STATUS.md](docs/EXTENSION_STATUS.md) | Extension capabilities, verification log, known limits |
+| [demo-video/README.md](demo-video/README.md) | How the demo video is recorded and rendered (HyperFrames + ffmpeg) |
 
 ## Project Structure
 
 ```
 src/
-  components/    # React UI components (chat, review panel, landing page)
-  hooks/         # Custom React hooks (chat, PII detection, model loading)
-  lib/           # Core detection and redaction logic
-  extension/     # Chrome extension source (model + file scanners)
+  components/    # React UI (chat, review panel, landing, install)
+  hooks/         # useModelLoader (detection tiers), usePIIDetection, useChat
+  lib/           # Detection, redaction, chat fallback, base-path routing
+  extension/     # Chrome extension source (model + file scanners, side panel)
 public/
   extension/     # Chrome MV3 scripts (content script, background)
-  samples/       # Demo sample files (PDFs, images, text)
-scripts/         # Playwright test scripts
-docs/            # Architecture, installation, and UX documentation
-server.ts        # Express API server (Claude proxy + PII scan endpoint)
+  samples/       # Demo sample files (PDFs, images, text) with planted PII
+  tesseract/     # Self-hosted OCR runtime (generated at build time)
+scripts/         # Build, package, QA, test, and demo-video tooling
+docs/            # Technical documentation (see index above)
+demo-video/      # Demo video pipeline + rendered MP4
+server.ts        # Express API server (Claude proxy + PII scan + status)
 ```
+
+A complete file-by-file map is in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#repository-map).
 
 ## Design Decisions & Tradeoffs
 
