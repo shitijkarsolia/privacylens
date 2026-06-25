@@ -266,6 +266,7 @@ A complete file-by-file map is in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#repo
 - The server only receives approved or redacted content
 - File processing (PDF parsing, OCR) is entirely client-side
 - No telemetry, no analytics, no tracking
+- All personal data in `public/samples/` and the test scripts is **synthetic** (fictional names, SSNs, addresses, emails) — see [SECURITY.md](SECURITY.md)
 
 ## Built With
 
