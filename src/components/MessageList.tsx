@@ -1,4 +1,4 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Message } from "../types";
 import { assetUrl } from "../lib/routes";
@@ -12,11 +12,64 @@ const SAMPLE_FILES = [
   { name: "medical-intake.txt", label: "Medical Intake", type: "text" },
 ];
 
+const HOW_IT_WORKS = [
+  {
+    step: "1",
+    title: "Scans locally",
+    text: "Every keystroke and file is checked on your device.",
+  },
+  {
+    step: "2",
+    title: "Blocks the send",
+    text: "Detected personal data hard-stops the message.",
+  },
+  {
+    step: "3",
+    title: "You decide",
+    text: "Redact, keep, or discard — nothing leaves until you approve.",
+  },
+];
+
 interface Props {
   messages: Message[];
   loading: boolean;
   onSampleFile?: (files: File[]) => void;
   onExampleText?: (text: string) => void;
+}
+
+function RedactedMessageNote({ message }: { message: Message }) {
+  const [showOriginal, setShowOriginal] = useState(false);
+
+  return (
+    <div className="mt-2 text-xs opacity-70">
+      <div className="flex items-center gap-2">
+        <p className="flex items-center gap-1.5 font-mono">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+          </svg>
+          Personal data redacted before sending
+        </p>
+        {message.originalContent && (
+          <button
+            onClick={() => setShowOriginal((v) => !v)}
+            className="font-mono underline decoration-dotted underline-offset-2 hover:opacity-80"
+          >
+            {showOriginal ? "hide original" : "show original"}
+          </button>
+        )}
+      </div>
+      {showOriginal && message.originalContent && (
+        <div className="mt-2 rounded-lg bg-black/15 px-3 py-2">
+          <p className="whitespace-pre-wrap font-mono text-[11px] leading-relaxed">
+            {message.originalContent}
+          </p>
+          <p className="mt-1.5 font-mono text-[10px] uppercase tracking-wider opacity-80">
+            Only visible here — never sent
+          </p>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function MessageList({ messages, loading, onSampleFile, onExampleText }: Props) {
@@ -40,9 +93,9 @@ export function MessageList({ messages, loading, onSampleFile, onExampleText }: 
 
   if (messages.length === 0 && !loading) {
     return (
-      <div className="flex-1 flex items-center justify-center px-6">
-        <div className="text-center max-w-lg">
-          <div className="w-16 h-16 rounded-2xl bg-[var(--color-accent)]/10 flex items-center justify-center mx-auto mb-6">
+      <div className="flex-1 overflow-y-auto scrollbar-thin flex px-6 py-6">
+        <div className="m-auto text-center max-w-xl">
+          <div className="w-16 h-16 rounded-2xl bg-[var(--color-accent)]/10 flex items-center justify-center mx-auto mb-5">
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-[var(--color-accent)]">
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
             </svg>
@@ -50,9 +103,30 @@ export function MessageList({ messages, loading, onSampleFile, onExampleText }: 
           <h2 className="text-xl font-semibold tracking-tight text-[var(--color-text)] mb-2">
             See what AI sees before AI sees it
           </h2>
-          <p className="text-sm leading-relaxed text-[var(--color-text-secondary)] max-w-[45ch] mx-auto mb-6">
-            Type a message or upload files. PrivacyLens scans for personal information before anything is sent.
+          <p className="text-sm leading-relaxed text-[var(--color-text-secondary)] max-w-[48ch] mx-auto mb-6">
+            This is a real AI chat with a privacy gate in front of it. Type a message or
+            upload files — anything sensitive is caught before it leaves your browser.
           </p>
+
+          {/* How it works */}
+          <div className="mb-7 grid grid-cols-3 gap-2 max-sm:grid-cols-1">
+            {HOW_IT_WORKS.map((item) => (
+              <div
+                key={item.step}
+                className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-3 text-left"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--color-accent)] text-[10px] font-bold text-white">
+                    {item.step}
+                  </span>
+                  <p className="text-xs font-bold text-[var(--color-text)]">{item.title}</p>
+                </div>
+                <p className="mt-1.5 text-[11px] leading-4 text-[var(--color-text-secondary)]">
+                  {item.text}
+                </p>
+              </div>
+            ))}
+          </div>
 
           {/* Text examples */}
           <div className="mb-6">
@@ -79,7 +153,7 @@ export function MessageList({ messages, loading, onSampleFile, onExampleText }: 
           {/* Sample files */}
           <div>
             <p className="text-[11px] font-mono text-[var(--color-text-secondary)] uppercase tracking-wider mb-3">
-              Or try a sample file
+              Or scan a sample file with planted personal data
             </p>
             <div className="grid grid-cols-3 gap-2 max-w-md mx-auto">
               {SAMPLE_FILES.map((sample) => (
@@ -125,16 +199,12 @@ export function MessageList({ messages, loading, onSampleFile, onExampleText }: 
     <div className="flex-1 overflow-y-auto px-4 py-6 scrollbar-thin">
       <div className="max-w-3xl mx-auto space-y-4">
         <AnimatePresence initial={false}>
-          {messages.map((msg, i) => (
+          {messages.map((msg) => (
             <motion.div
               key={msg.id}
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{
-                duration: 0.4,
-                ease: [0.16, 1, 0.3, 1],
-                delay: i === messages.length - 1 ? 0 : 0,
-              }}
+              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
               className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
             >
               <div
@@ -145,14 +215,7 @@ export function MessageList({ messages, loading, onSampleFile, onExampleText }: 
                 }`}
               >
                 <p className="whitespace-pre-wrap">{msg.content}</p>
-                {msg.redacted && (
-                  <p className="mt-2 flex items-center gap-1.5 text-xs opacity-60 font-mono">
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                    </svg>
-                    Personal data redacted before sending
-                  </p>
-                )}
+                {msg.redacted && <RedactedMessageNote message={msg} />}
                 {msg.role === "assistant" && msg.via === "demo" && (
                   <p className="mt-2 text-[10px] uppercase tracking-wider font-mono text-[var(--color-text-secondary)]/70">
                     Demo assistant - add an API key for live Claude replies
