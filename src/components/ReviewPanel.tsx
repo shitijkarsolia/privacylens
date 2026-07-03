@@ -285,32 +285,47 @@ export function ReviewPanel({
                     <button
                       key={`${entity.start}-${entity.end}-${index}`}
                       onClick={() => toggleEntity(index)}
+                      aria-pressed={isSelected}
+                      aria-label={`${isSelected ? "Redact" : "Keep"} ${categoryLabel(entity.category)} ${entity.text}`}
                       className={`w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]/30 active:scale-[0.99] ${
                         isSelected
                           ? "border-[var(--color-accent)]/20 bg-[var(--color-accent)]/5"
                           : "border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-canvas)]"
                       }`}
                     >
-                      <span className={`w-2 h-2 rounded-full ${SEVERITY_DOT[severity]}`} />
+                      <span className={`w-2 h-2 shrink-0 rounded-full ${SEVERITY_DOT[severity]}`} />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-[var(--color-text)] truncate">
                           {maskReviewValue(entity.text, entity.category)}
                         </p>
                         <p className="text-xs text-[var(--color-text-secondary)] font-mono">
-                          {categoryLabel(entity.category)} - {Math.round(entity.confidence * 100)}% - {entity.source}
+                          {categoryLabel(entity.category)}
+                          <span className={`ml-1.5 inline-block rounded px-1 py-px text-[9px] font-bold uppercase tracking-wider border ${SEVERITY_PILL[severity]}`}>
+                            {severity}
+                          </span>
+                          <span className="ml-1.5">{Math.round(entity.confidence * 100)}% - {entity.source}</span>
                         </p>
                       </div>
+                      <span className="text-xs font-mono text-[var(--color-text-secondary)] max-sm:hidden">
+                        {isSelected ? REDACTION_LABELS[entity.category] : "kept visible"}
+                      </span>
                       <span
-                        className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                          isSelected
-                            ? "bg-[#E8F8F4] text-[var(--color-accent)]"
-                            : "bg-[var(--color-canvas)] text-[var(--color-text-secondary)]"
+                        className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
+                          isSelected ? "bg-[var(--color-accent)]" : "bg-[var(--color-border)]"
+                        }`}
+                      >
+                        <span
+                          className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-all ${
+                            isSelected ? "left-[18px]" : "left-0.5"
+                          }`}
+                        />
+                      </span>
+                      <span
+                        className={`w-12 shrink-0 text-right text-[10px] font-bold uppercase tracking-wider ${
+                          isSelected ? "text-[var(--color-accent)]" : "text-[var(--color-text-secondary)]"
                         }`}
                       >
                         {isSelected ? "Redact" : "Keep"}
-                      </span>
-                      <span className="text-xs font-mono text-[var(--color-text-secondary)]">
-                        {REDACTION_LABELS[entity.category]}
                       </span>
                     </button>
                   );

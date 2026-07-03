@@ -51,7 +51,7 @@ export function ModelStatus({ status }: Props) {
       <span
         className={`w-2 h-2 rounded-full ${config.color} ${config.pulse ? "animate-pulse" : ""}`}
       />
-      <span>{config.label(status)}</span>
+      <span className="max-sm:hidden">{config.label(status)}</span>
       {status.state === "downloading" && status.progress !== undefined && (
         <span className="tabular-nums">{Math.round(status.progress)}%</span>
       )}

@@ -25,6 +25,10 @@
   box-sizing: border-box;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 html, body, #root {
   min-height: 100%;
   margin: 0;
@@ -80,4 +84,40 @@ input, textarea, button {
 .scrollbar-thin::-webkit-scrollbar-thumb {
   background: var(--color-border);
   border-radius: 3px;
+}
+
+/* Live composer highlighting: a mirror layer renders invisible text with
+   colored marks behind the real (transparent-background) textarea, so
+   detected spans light up in place while the user types. */
+.composer-mirror {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  color: transparent;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.composer-mirror mark {
+  color: transparent;
+  border-radius: 4px;
+  padding: 1px 0;
+  margin: -1px 0;
+}
+
+.composer-mirror mark.sev-high {
+  background: rgba(229, 77, 46, 0.22);
+  box-shadow: 0 1.5px 0 0 var(--color-severity-high);
+}
+
+.composer-mirror mark.sev-medium {
+  background: rgba(245, 166, 35, 0.24);
+  box-shadow: 0 1.5px 0 0 var(--color-severity-medium);
+}
+
+.composer-mirror mark.sev-low {
+  background: rgba(18, 165, 148, 0.18);
+  box-shadow: 0 1.5px 0 0 var(--color-severity-low);
 }

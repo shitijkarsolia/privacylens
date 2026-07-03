@@ -5,19 +5,26 @@ import {
   CheckCircle2,
   Chrome,
   CreditCard,
+  FileText,
+  Github,
   Home,
+  Image,
   Lock,
   Mail,
+  MessageSquareText,
   MoreVertical,
   Paperclip,
   Play,
   Plus,
   Puzzle,
+  ScanSearch,
   SendHorizontal,
   Settings,
+  ShieldAlert,
   ShieldCheck,
   Star,
   User,
+  UserCheck,
   Wand2,
   Zap,
 } from "lucide-react";
@@ -60,6 +67,54 @@ const piiItems = [
     severity: "High Risk",
     tone: "high",
   },
+];
+
+const GITHUB_URL = "https://github.com/shitijkarsolia/privacylens";
+
+const howItWorks = [
+  {
+    icon: ScanSearch,
+    step: "01",
+    title: "Scans locally, as you type",
+    text: "An instant pattern scanner highlights risky text on every keystroke, and an on-device AI model (1.5B sparse MoE via Transformers.js) deep-scans on submit. Nothing touches a server.",
+  },
+  {
+    icon: ShieldAlert,
+    step: "02",
+    title: "Hard-blocks risky sends",
+    text: "The ethics gate is not a dismissible warning. If personal data is detected, the send pipeline is physically halted until you review every item.",
+  },
+  {
+    icon: UserCheck,
+    step: "03",
+    title: "You decide what's shared",
+    text: "Redact items with one click, keep them with explicit acknowledgment, or cancel entirely. Files get a visual before/after preview of the redacted copy.",
+  },
+];
+
+const formats = [
+  {
+    icon: MessageSquareText,
+    title: "Text",
+    text: "Live highlighting in any composer",
+  },
+  {
+    icon: FileText,
+    title: "PDFs",
+    text: "Text extracted and scanned in-browser",
+  },
+  {
+    icon: Image,
+    title: "Images",
+    text: "On-device OCR finds text in screenshots",
+  },
+];
+
+const guarantees = [
+  "All detection runs locally in your browser",
+  "No telemetry, no analytics, no tracking",
+  "Unscannable files are blocked by default",
+  "The AI service only ever sees what you approve",
 ];
 
 const features = [
@@ -308,11 +363,48 @@ function BrowserMock() {
 export function LandingPage() {
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#FDFCFB] text-[#111827]">
-      <section className="landing-grid relative mx-auto grid min-h-screen w-full max-w-[1500px] items-start gap-12 px-11 py-11 max-lg:px-6 max-sm:px-4">
-        <div className="landing-copy z-10 w-full min-w-0 max-w-[620px] max-xl:max-w-[760px]">
-          <Logo />
+      <header className="sticky top-0 z-30 border-b border-[#ECE9E4]/80 bg-[#FDFCFB]/85 backdrop-blur-xl">
+        <nav className="mx-auto flex h-16 w-full max-w-[1500px] items-center justify-between px-11 max-lg:px-6 max-sm:px-4">
+          <a href={appPath("")} aria-label="PrivacyLens home">
+            <Logo compact />
+          </a>
+          <div className="flex items-center gap-6 max-sm:gap-3">
+            <a
+              href="#how-it-works"
+              className="text-sm font-semibold text-[#354154] transition hover:text-[#079B8E] max-md:hidden"
+            >
+              How it works
+            </a>
+            <a
+              href={appPath("demo")}
+              className="text-sm font-semibold text-[#354154] transition hover:text-[#079B8E] max-sm:hidden"
+            >
+              Live demo
+            </a>
+            <a
+              href={GITHUB_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="text-[#354154] transition hover:text-[#079B8E]"
+              aria-label="View source on GitHub"
+              title="View source on GitHub"
+            >
+              <Github size={19} />
+            </a>
+            <a
+              href={appPath("install")}
+              className="inline-flex items-center gap-2 rounded-lg bg-[#079B8E] px-4 py-2 text-sm font-bold text-white shadow-[0_8px_20px_rgba(7,155,142,0.22)] transition hover:bg-[#067F75]"
+            >
+              <Chrome size={16} />
+              Get the extension
+            </a>
+          </div>
+        </nav>
+      </header>
 
-          <div className="mt-14 inline-flex items-center gap-2 rounded-full border border-[#D7EEE9] bg-[#EFFAF8] px-4 py-2 text-sm font-semibold text-[#078C7D] max-lg:mt-8">
+      <section className="landing-grid relative mx-auto grid w-full max-w-[1500px] items-start gap-12 px-11 py-11 max-lg:px-6 max-sm:px-4">
+        <div className="landing-copy z-10 w-full min-w-0 max-w-[620px] max-xl:max-w-[760px]">
+          <div className="inline-flex items-center gap-2 rounded-full border border-[#D7EEE9] bg-[#EFFAF8] px-4 py-2 text-sm font-semibold text-[#078C7D]">
             <Lock size={15} />
             Your data. Your privacy. Always.
           </div>
@@ -385,12 +477,124 @@ export function LandingPage() {
         </div>
       </section>
 
-      <section id="how-it-works" className="mx-auto flex max-w-[760px] items-center justify-center gap-3 px-6 pb-9 text-center text-lg text-[#354154]">
-        <ShieldCheck className="shrink-0 text-[#079B8E]" size={24} />
-        <p>
-          Privacy made <span className="font-bold text-[#079B8E]">effortless.</span> Security without slowing you down.
+      <section id="how-it-works" className="mx-auto w-full max-w-[1180px] scroll-mt-20 px-11 pb-8 pt-20 max-lg:px-6 max-sm:px-4">
+        <p className="text-sm font-bold uppercase tracking-[0.14em] text-[#079B8E]">How it works</p>
+        <h2 className="mt-3 max-w-[560px] text-4xl font-bold leading-[1.1] tracking-[-0.03em] max-sm:text-3xl">
+          A privacy gate between you and every AI chat.
+        </h2>
+        <p className="mt-4 max-w-[560px] text-lg leading-8 text-[#354154]">
+          Three steps run before a single character reaches ChatGPT, Claude, Gemini,
+          Perplexity, or Copilot.
         </p>
+
+        <div className="mt-10 grid grid-cols-3 gap-6 max-lg:grid-cols-1">
+          {howItWorks.map((item) => {
+            const Icon = item.icon;
+            return (
+              <div
+                key={item.step}
+                className="rounded-2xl border border-[#E8E5DF] bg-white p-6 shadow-[0_10px_32px_rgba(15,23,42,0.05)]"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#EAF8F5] text-[#079B8E]">
+                    <Icon size={26} />
+                  </div>
+                  <span className="text-sm font-bold tracking-[0.1em] text-[#B4BDC9]">{item.step}</span>
+                </div>
+                <h3 className="mt-5 text-lg font-bold tracking-tight">{item.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-[#4D5B6C]">{item.text}</p>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="mt-6 grid grid-cols-3 gap-6 max-lg:grid-cols-1">
+          {formats.map((format) => {
+            const Icon = format.icon;
+            return (
+              <div
+                key={format.title}
+                className="flex items-center gap-4 rounded-2xl border border-[#E8E5DF] bg-white px-5 py-4"
+              >
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#F4F5F7] text-[#354154]">
+                  <Icon size={20} />
+                </div>
+                <div>
+                  <p className="text-sm font-bold">{format.title}</p>
+                  <p className="text-xs leading-5 text-[#4D5B6C]">{format.text}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </section>
+
+      <section className="mx-auto w-full max-w-[1180px] px-11 py-14 max-lg:px-6 max-sm:px-4">
+        <div className="grid grid-cols-[1.1fr_0.9fr] items-center gap-10 rounded-[24px] bg-[#0E2A27] px-10 py-10 text-white max-lg:grid-cols-1 max-sm:px-6">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-1.5 text-sm font-semibold text-[#7ADCCF]">
+              <Lock size={14} />
+              The privacy guarantee is architectural, not policy
+            </div>
+            <h2 className="mt-5 text-3xl font-bold leading-[1.15] tracking-[-0.02em] max-sm:text-2xl">
+              Nothing leaves your browser until you approve it.
+            </h2>
+            <div className="mt-6 flex flex-wrap gap-4">
+              <a
+                href={appPath("demo")}
+                className="inline-flex items-center gap-2 rounded-lg bg-[#12BFAE] px-6 py-3 text-base font-bold text-[#062B27] transition hover:bg-[#2BD3C2]"
+              >
+                Try the live demo
+                <ArrowRight size={18} />
+              </a>
+              <a
+                href={appPath("install")}
+                className="inline-flex items-center gap-2 rounded-lg border border-white/25 px-6 py-3 text-base font-bold text-white transition hover:bg-white/10"
+              >
+                <Chrome size={18} />
+                Install the extension
+              </a>
+            </div>
+          </div>
+          <ul className="space-y-3">
+            {guarantees.map((guarantee) => (
+              <li key={guarantee} className="flex items-start gap-3 text-sm leading-6 text-[#D4E7E3]">
+                <CheckCircle2 size={18} className="mt-0.5 shrink-0 text-[#7ADCCF]" />
+                {guarantee}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
+      <footer className="border-t border-[#ECE9E4]">
+        <div className="mx-auto flex w-full max-w-[1500px] flex-wrap items-center justify-between gap-6 px-11 py-8 max-lg:px-6 max-sm:px-4">
+          <div className="flex items-center gap-3">
+            <Logo compact />
+            <span className="text-sm text-[#697386] max-sm:hidden">
+              See what AI sees before AI sees it.
+            </span>
+          </div>
+          <div className="flex flex-wrap items-center gap-6 text-sm font-semibold text-[#354154]">
+            <a href={appPath("demo")} className="transition hover:text-[#079B8E]">
+              Live demo
+            </a>
+            <a href={appPath("install")} className="transition hover:text-[#079B8E]">
+              Install extension
+            </a>
+            <a
+              href={GITHUB_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 transition hover:text-[#079B8E]"
+            >
+              <Github size={16} />
+              GitHub
+            </a>
+            <span className="font-normal text-[#697386]">MIT License</span>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
