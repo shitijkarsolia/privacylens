@@ -1,10 +1,9 @@
 import express from "express";
 import cors from "cors";
-import Anthropic from "@anthropic-ai/sdk";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import fs from "fs";
-import { generateDemoReply } from "./src/lib/demo-assistant";
+import { generateChatReply, activeChatProvider } from "./src/lib/chat-providers";
 import { toEntities } from "./src/lib/model-entities";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -14,13 +13,15 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: "10mb" }));
 
-// Without a key the server still runs: chat uses the local demo assistant
-// (clearly labeled in the UI) and PII scanning is unaffected.
-const client = process.env.ANTHROPIC_API_KEY ? new Anthropic() : null;
-if (!client) {
+// Chat provider is resolved from env (Gemini by default, then Claude, then the
+// built-in demo assistant). PII scanning is unaffected by chat configuration.
+const chatProvider = activeChatProvider();
+if (chatProvider === "demo") {
   console.warn(
-    "ANTHROPIC_API_KEY not set - /api/chat will answer with the built-in demo assistant."
+    "No GEMINI_API_KEY / ANTHROPIC_API_KEY set - /api/chat will answer with the built-in demo assistant."
   );
+} else {
+  console.log(`/api/chat will use the ${chatProvider} provider.`);
 }
 
 // --- PII Detection Model (loaded once at startup) ---
@@ -94,27 +95,10 @@ app.post("/api/chat", async (req, res) => {
       return;
     }
 
-    if (!client) {
-      res.json({ content: generateDemoReply(messages), via: "demo" });
-      return;
-    }
-
-    const response = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 1024,
-      system:
-        "You are a helpful assistant. The user may send messages with redacted personal information (shown as [NAME], [EMAIL], [PHONE], etc.). Respond helpfully while respecting that the user has chosen to protect their privacy. Never ask for the redacted information.",
-      messages: messages.map((m: { role: string; content: string }) => ({
-        role: m.role as "user" | "assistant",
-        content: m.content,
-      })),
-    });
-
-    const textBlock = response.content.find((b: any) => b.type === "text");
-    const content = textBlock && "text" in textBlock ? textBlock.text : "";
-    res.json({ content, via: "claude" });
+    const reply = await generateChatReply(messages);
+    res.json(reply);
   } catch (err: any) {
-    console.error("Claude API error:", err?.message || err);
+    console.error("Chat error:", err?.message || err);
     res.status(500).json({ error: err?.message || "Internal server error" });
   }
 });

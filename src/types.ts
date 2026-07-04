@@ -36,7 +36,7 @@ export interface Message {
   piiEntities?: PIIEntity[];
   redacted?: boolean;
   /** Which backend produced an assistant reply. */
-  via?: "claude" | "demo";
+  via?: "gemini" | "claude" | "demo";
   timestamp: number;
 }
 

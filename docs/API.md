@@ -63,8 +63,25 @@ results, where more **specific** labels win (e.g. `ssn` over `account_number`).
 
 ## `POST /api/chat`
 
-Returns an assistant reply. Uses Claude when an API key is configured, otherwise
-the built-in demo assistant.
+Returns an assistant reply. Provider is resolved from environment variables:
+Gemini by default, then Claude, then the built-in demo assistant. On the
+deployed site this is a Vercel serverless function ([`api/chat.ts`](../api/chat.ts));
+locally it is served by [`server.ts`](../server.ts). Both delegate to the same
+module ([`src/lib/chat-providers.ts`](../src/lib/chat-providers.ts)).
+
+**Environment variables**
+
+| Variable | Effect |
+|---|---|
+| `GEMINI_API_KEY` | Enables live Gemini replies (default provider). |
+| `GEMINI_MODEL` | Optional. Defaults to `gemini-flash-latest`. |
+| `ANTHROPIC_API_KEY` | Enables Claude as the fallback provider. |
+| `CLAUDE_MODEL` | Optional. Defaults to `claude-sonnet-4-20250514`. |
+| `CHAT_PROVIDER` | Optional. Force `gemini` \| `claude` \| `demo`. |
+
+With no keys set, replies come from the built-in demo assistant. Gemini "flash"
+models reason by default; the request disables that (`thinkingBudget: 0`) for
+fast, complete demo replies.
 
 **Request**
 ```json
@@ -73,13 +90,15 @@ the built-in demo assistant.
 
 **Response `200`**
 ```json
+{ "content": "…assistant reply…", "via": "gemini" }   // GEMINI_API_KEY set (default)
 { "content": "…assistant reply…", "via": "claude" }   // ANTHROPIC_API_KEY set
 { "content": "…assistant reply…", "via": "demo" }     // no key → demo assistant
 ```
 
 The system prompt instructs the model that the user may send redacted
 placeholders (`[NAME]`, `[SSN]`, …) and to never ask for the redacted values.
-The `via` field lets the UI label demo replies.
+The `via` field lets the UI label demo replies. Any provider failure (missing
+key, quota, network, empty response) degrades to the demo assistant.
 
 **Errors:** `400` `{ "error": "messages array required" }` ·
 `500` `{ "error": "<message>" }` (the web client treats any failure as a cue to
@@ -91,7 +110,7 @@ fall back to the local demo assistant, so the demo never dead-ends).
 
 | Condition | Detection | Chat |
 |---|---|---|
-| Server up, model `ready` | `/api/scan` (tier 1) | `/api/chat` → Claude or demo |
+| Server up, model `ready` | `/api/scan` (tier 1) | `/api/chat` → Gemini/Claude or demo |
 | Server up, model `failed` | regex (tier 3) | `/api/chat` |
 | No server (static host) | WebGPU model (tier 2) or regex (tier 3) | local demo assistant |
 
