@@ -12,6 +12,67 @@ const SAMPLE_FILES = [
   { name: "medical-intake.txt", label: "Medical Intake", type: "text" },
 ];
 
+const SCENARIOS = [
+  {
+    id: "offer",
+    title: "Sanity-check a job offer",
+    description: "Ask about negotiation — the SSN and address never needed to leave.",
+    catches: ["name", "ssn", "address", "email"],
+    text: [
+      "Can you sanity-check this job offer? Base is $145,000 with a 10% bonus.",
+      "It's for Maya Rodriguez, SSN 545-11-2325, living at 2847 Willow Creek Dr, Austin TX 78745.",
+      "HR wants a reply to recruiting@brightpath.io by March 3, 2026. Should I negotiate base or equity?",
+    ].join("\n"),
+  },
+  {
+    id: "deploy",
+    title: "Debug a deploy script",
+    description: "Get the bug fixed without leaking the live API key pasted in it.",
+    catches: ["api key"],
+    text: [
+      "Why does the auth step in this deploy script fail?",
+      "",
+      "export STRIPE_KEY=sk_live_51Hxk2LmNop3QrStUvWx",
+      'curl -H "Authorization: Bearer $STRIPE_KEY" https://api.stripe.com/v1/charges',
+    ].join("\n"),
+  },
+  {
+    id: "landlord",
+    title: "Draft a landlord email",
+    description: "A ready-to-send draft — placeholders stand in for your real details.",
+    catches: ["name", "phone", "address", "date"],
+    text: [
+      "Draft a firm but polite email to my landlord about a heater that's been broken since 01/12/2026.",
+      "My name is Jordan Lee and the unit is 1408 Maple Street, Portland OR 97214.",
+      "Include my callback number (503) 555-0164 and email jordan.lee88@gmail.com.",
+    ].join("\n"),
+  },
+];
+
+function ScenarioIcon({ id }: { id: string }) {
+  if (id === "offer") {
+    return (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+      </svg>
+    );
+  }
+  if (id === "deploy") {
+    return (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <path d="m4 17 6-6-6-6M12 19h8" />
+      </svg>
+    );
+  }
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+      <path d="m22 6-10 7L2 6" />
+    </svg>
+  );
+}
+
 const HOW_IT_WORKS = [
   {
     step: "1",
@@ -94,7 +155,7 @@ export function MessageList({ messages, loading, onSampleFile, onExampleText }: 
   if (messages.length === 0 && !loading) {
     return (
       <div className="flex-1 overflow-y-auto scrollbar-thin flex px-6 py-6">
-        <div className="m-auto text-center max-w-xl">
+        <div className="m-auto text-center max-w-2xl">
           <div className="w-16 h-16 rounded-2xl bg-[var(--color-accent)]/10 flex items-center justify-center mx-auto mb-5">
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-[var(--color-accent)]">
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
@@ -128,23 +189,37 @@ export function MessageList({ messages, loading, onSampleFile, onExampleText }: 
             ))}
           </div>
 
-          {/* Text examples */}
+          {/* Realistic scenarios */}
           <div className="mb-6">
             <p className="text-[11px] font-mono text-[var(--color-text-secondary)] uppercase tracking-wider mb-2">
-              Try typing
+              Try a real scenario — click to fill the composer
             </p>
-            <div className="flex flex-wrap gap-2 justify-center">
-              {[
-                "My name is John Smith, SSN 123-45-6789",
-                "Email me at sarah@company.com",
-                "I live at 742 Evergreen Terrace, Springfield",
-              ].map((example) => (
+            <div className="grid grid-cols-3 gap-2 max-sm:grid-cols-1">
+              {SCENARIOS.map((scenario) => (
                 <button
-                  key={example}
-                  onClick={() => onExampleText?.(example)}
-                  className="text-xs font-mono px-3 py-1.5 rounded-full bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-secondary)] transition hover:border-[var(--color-accent)]/40 hover:bg-[var(--color-accent)]/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]/25"
+                  key={scenario.id}
+                  onClick={() => onExampleText?.(scenario.text)}
+                  className="group flex flex-col gap-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-3 text-left transition-all hover:border-[var(--color-accent)]/40 hover:bg-[var(--color-accent)]/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]/25"
                 >
-                  {example}
+                  <span className="flex items-center gap-2 text-[var(--color-text)]">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--color-canvas)] text-[var(--color-text-secondary)] transition-colors group-hover:bg-[var(--color-accent)]/10 group-hover:text-[var(--color-accent)]">
+                      <ScenarioIcon id={scenario.id} />
+                    </span>
+                    <span className="text-xs font-bold leading-tight">{scenario.title}</span>
+                  </span>
+                  <span className="text-[11px] leading-4 text-[var(--color-text-secondary)]">
+                    {scenario.description}
+                  </span>
+                  <span className="mt-0.5 flex flex-wrap gap-1">
+                    {scenario.catches.map((label) => (
+                      <span
+                        key={label}
+                        className="rounded-full bg-[#E54D2E]/8 px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wider text-[#C13215]"
+                      >
+                        {label}
+                      </span>
+                    ))}
+                  </span>
                 </button>
               ))}
             </div>

@@ -18,7 +18,7 @@ const PATTERNS: RegexPattern[] = [
     confidence: 0.96,
   },
   {
-    pattern: /\b\d{9}\b(?=.*\b(ssn|social)\b)/gi,
+    pattern: /\b\d{9}\b(?=.*\b(?:ssn|social)\b)/gi,
     category: "ssn",
     confidence: 0.85,
   },
@@ -29,7 +29,7 @@ const PATTERNS: RegexPattern[] = [
   },
   {
     pattern:
-      /(\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/g,
+      /(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/g,
     category: "private_phone",
     confidence: 0.9,
   },
@@ -40,19 +40,19 @@ const PATTERNS: RegexPattern[] = [
   },
   {
     pattern:
-      /\b(0[1-9]|1[0-2])\/(0[1-9]|[12]\d|3[01])\/(19|20)\d{2}\b/g,
+      /\b(?:0[1-9]|1[0-2])\/(?:0[1-9]|[12]\d|3[01])\/(?:19|20)\d{2}\b/g,
     category: "private_date",
     confidence: 0.85,
   },
   {
     pattern:
-      /\b(19|20)\d{2}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])\b/g,
+      /\b(?:19|20)\d{2}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])\b/g,
     category: "private_date",
     confidence: 0.85,
   },
   {
     pattern:
-      /\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+(0?[1-9]|[12]\d|3[01]),?\s+(19|20)\d{2}\b/gi,
+      /\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+(?:0?[1-9]|[12]\d|3[01]),?\s+(?:19|20)\d{2}\b/gi,
     category: "private_date",
     confidence: 0.8,
   },
@@ -64,13 +64,13 @@ const PATTERNS: RegexPattern[] = [
   },
   {
     pattern:
-      /\b(sk|pk|api[_-]?key|token|secret|password|passwd|pwd)[-_]?[a-zA-Z0-9_]{16,}\b/gi,
+      /\b(?:sk|pk|api[_-]?key|token|secret|password|passwd|pwd)[-_]?[a-zA-Z0-9_]{16,}\b/gi,
     category: "secret",
     confidence: 0.9,
   },
   {
     pattern:
-      /\b(ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9_]{36,}\b/g,
+      /\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9_]{36,}\b/g,
     category: "secret",
     confidence: 0.95,
   },
