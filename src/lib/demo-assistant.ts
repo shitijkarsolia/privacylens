@@ -140,7 +140,7 @@ export function generateDemoReply(messages: DemoChatMessage[]): string {
   if (lower.includes("privacylens") || (lower.includes("how") && lower.includes("work"))) {
     return (
       "PrivacyLens scans everything you type or attach - locally, before it is sent anywhere. Detected personal data hard-blocks the send button until you review it. You choose what gets redacted and what stays.\n\n" +
-      "This reply comes from the built-in demo assistant; connect an Anthropic API key to chat with Claude for real."
+      "This reply comes from the built-in demo assistant; connect a Gemini or Anthropic API key to chat with a live model."
     );
   }
 

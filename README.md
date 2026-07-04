@@ -119,7 +119,7 @@ For full architecture documentation including system overview and Chrome extensi
 | PDF Parsing | pdfjs-dist |
 | Image OCR | Tesseract.js (in-browser) |
 | Visual Redaction | Canvas API |
-| Chat Backend | Claude API via Anthropic SDK |
+| Chat Backend | Google Gemini (default) or Claude, via REST |
 | API Server | Express + tsx |
 | Extension | Chrome MV3 (content script + side panel) |
 | Testing | Playwright |
@@ -174,17 +174,25 @@ npm run server
 # Open http://localhost:3001/demo  (live chat demo)
 ```
 
-The server runs **with or without** an Anthropic API key:
+The server runs **with or without** an AI API key:
 
-- **With `ANTHROPIC_API_KEY`** set, the in-app chat talks to Claude.
+- **With `GEMINI_API_KEY`** set (default provider), the in-app chat talks to
+  Google Gemini. **With `ANTHROPIC_API_KEY`** set, it talks to Claude instead.
 - **Without a key**, chat replies come from a clearly labeled built-in demo
   assistant, so the whole flow (detection, the ethics gate, redaction,
   before/after previews) is fully explorable out of the box.
 
 ```bash
-# Optional: enable live Claude responses
+# Optional: enable live model responses (Gemini is the default provider)
+GEMINI_API_KEY=your-key npm run server
+# or Claude:
 ANTHROPIC_API_KEY=your-key npm run server
 ```
+
+Chat is served by a Vercel serverless function (`api/chat.ts`) when deployed and
+by `server.ts` locally; both share [`src/lib/chat-providers.ts`](src/lib/chat-providers.ts).
+Set the same env vars in your Vercel project. Optional: `GEMINI_MODEL`
+(default `gemini-flash-latest`), `CLAUDE_MODEL`, or `CHAT_PROVIDER` to force one.
 
 ### Shareable static build (no server)
 
@@ -202,7 +210,7 @@ npm run build:pages   # builds dist/ for static hosting + 404 SPA fallback + ext
 
 ```bash
 # Terminal 1: API server
-ANTHROPIC_API_KEY=your-key npm run server
+GEMINI_API_KEY=your-key npm run server
 
 # Terminal 2: Vite dev server with HMR
 npm run dev

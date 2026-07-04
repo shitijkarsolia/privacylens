@@ -293,7 +293,7 @@ export function MessageList({ messages, loading, onSampleFile, onExampleText }: 
                 {msg.redacted && <RedactedMessageNote message={msg} />}
                 {msg.role === "assistant" && msg.via === "demo" && (
                   <p className="mt-2 text-[10px] uppercase tracking-wider font-mono text-[var(--color-text-secondary)]/70">
-                    Demo assistant - add an API key for live Claude replies
+                    Demo assistant - add an API key for live AI replies
                   </p>
                 )}
               </div>

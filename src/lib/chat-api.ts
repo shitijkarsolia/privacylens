@@ -3,7 +3,7 @@ import { generateDemoReply } from "./demo-assistant";
 
 export interface ChatReply {
   content: string;
-  via: "claude" | "demo";
+  via: "gemini" | "claude" | "demo";
 }
 
 type APIMessage = { role: "user" | "assistant"; content: string };
@@ -46,7 +46,9 @@ export async function sendChatMessage(messages: APIMessage[]): Promise<ChatReply
   }
 
   const data = await res.json();
-  return { content: data.content, via: data.via === "demo" ? "demo" : "claude" };
+  const via: ChatReply["via"] =
+    data.via === "gemini" || data.via === "claude" ? data.via : "demo";
+  return { content: data.content, via };
 }
 
 export function messagesToAPI(messages: Message[]): APIMessage[] {

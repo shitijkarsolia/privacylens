@@ -3,7 +3,7 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
-      "source": "/((?!assets/|tesseract/|samples/|.*\\.).*)",
+      "source": "/((?!api/|assets/|tesseract/|samples/|.*\\.).*)",
       "destination": "/index.html"
     }
   ]
