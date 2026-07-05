@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { DetectionResult } from "../types";
 import { SEVERITY_MAP, REDACTION_LABELS } from "../types";
@@ -80,6 +80,52 @@ export function ReviewPanel({
   );
   const [showOverrideConfirm, setShowOverrideConfirm] = useState(false);
   const [showKeepConfirm, setShowKeepConfirm] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const panelRef = useRef<HTMLDivElement>(null);
+  const titleId = mode === "attachment" ? "review-title-attachment" : "review-title-message";
+
+  // Accessible-dialog behavior: focus the panel on open, keep Tab within it,
+  // and return focus to whatever was focused before when it closes.
+  useEffect(() => {
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    panelRef.current?.focus();
+
+    const handleTab = (event: KeyboardEvent) => {
+      if (event.key !== "Tab" || !panelRef.current) return;
+      const focusable = panelRef.current.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), a[href], input:not([disabled]), textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement;
+
+      if (event.shiftKey && (active === first || active === panelRef.current)) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleTab);
+    return () => {
+      document.removeEventListener("keydown", handleTab);
+      previouslyFocused?.focus?.();
+    };
+  }, []);
+
+  const copyPreview = async () => {
+    try {
+      await navigator.clipboard.writeText(previewText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      // Clipboard blocked (permissions / insecure context) - stay silent.
+    }
+  };
 
   const selectedCount = selectedEntities.size;
   const keptCount = Math.max(0, result.entities.length - selectedCount);
@@ -145,11 +191,16 @@ export function ReviewPanel({
   return (
     <AnimatePresence>
       <motion.div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
         initial={{ x: 20 }}
         animate={{ x: 0 }}
         exit={{ x: 20 }}
         transition={{ type: "spring", stiffness: 100, damping: 20 }}
-        className="fixed right-0 top-0 bottom-0 z-40 border-l border-[var(--color-border)] bg-[var(--color-surface)] w-full md:w-[560px] flex flex-col h-full overflow-hidden shadow-[-8px_0_30px_rgba(0,0,0,0.08)]"
+        className="fixed right-0 top-0 bottom-0 z-40 border-l border-[var(--color-border)] bg-[var(--color-surface)] w-full md:w-[560px] flex flex-col h-full overflow-hidden shadow-[-8px_0_30px_rgba(0,0,0,0.08)] focus:outline-none"
       >
         <div className="px-5 py-4 border-b border-[var(--color-border)] flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -159,7 +210,7 @@ export function ReviewPanel({
               </svg>
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-[var(--color-text)]">
+              <h3 id={titleId} className="text-sm font-semibold text-[var(--color-text)]">
                 Review before {mode === "attachment" ? "attaching" : "sending"}
               </h3>
               <p className="text-xs text-[var(--color-text-secondary)]">
@@ -336,9 +387,33 @@ export function ReviewPanel({
 
           {text.trim() && (
             <div className="px-5 py-4">
-              <p className="text-xs font-mono text-[var(--color-text-secondary)] mb-2 uppercase tracking-wider">
-                Safe copy preview
-              </p>
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <p className="text-xs font-mono text-[var(--color-text-secondary)] uppercase tracking-wider">
+                  Safe copy preview
+                </p>
+                <button
+                  onClick={copyPreview}
+                  className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold text-[var(--color-accent)] transition-colors hover:bg-[var(--color-accent)]/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]/30"
+                  title="Copy the safe copy to your clipboard"
+                >
+                  {copied ? (
+                    <>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <path d="M20 6 9 17l-5-5" />
+                      </svg>
+                      Copied
+                    </>
+                  ) : (
+                    <>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                      </svg>
+                      Copy
+                    </>
+                  )}
+                </button>
+              </div>
               <div className="text-sm leading-relaxed text-[var(--color-text)] bg-[var(--color-canvas)] rounded-xl p-4 border border-[var(--color-border)] font-mono max-h-32 overflow-y-auto scrollbar-thin">
                 {previewText}
               </div>
