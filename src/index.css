@@ -29,6 +29,23 @@ html {
   scroll-behavior: smooth;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  /* Spinners/pulses still animate (they signal live work), but slow them
+     so they read as steady status rather than motion. */
+  .animate-spin {
+    animation-duration: 1.6s;
+  }
+
+  .animate-pulse {
+    animation: none;
+    opacity: 0.7;
+  }
+}
+
 html, body, #root {
   min-height: 100%;
   margin: 0;

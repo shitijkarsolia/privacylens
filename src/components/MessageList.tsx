@@ -133,6 +133,22 @@ function RedactedMessageNote({ message }: { message: Message }) {
   );
 }
 
+const SOURCE_LABELS: Record<NonNullable<Message["via"]>, string> = {
+  gemini: "Live reply via Gemini",
+  claude: "Live reply via Claude",
+  demo: "Demo assistant - add an API key for live AI replies",
+};
+
+function AssistantSource({ via }: { via: NonNullable<Message["via"]> }) {
+  const isLive = via !== "demo";
+  return (
+    <p className="mt-2 flex items-center gap-1.5 text-[10px] uppercase tracking-wider font-mono text-[var(--color-text-secondary)]/70">
+      <span className={`h-1.5 w-1.5 rounded-full ${isLive ? "bg-[var(--color-accent)]" : "bg-[var(--color-text-secondary)]/40"}`} />
+      {SOURCE_LABELS[via]}
+    </p>
+  );
+}
+
 export function MessageList({ messages, loading, onSampleFile, onExampleText }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -291,11 +307,7 @@ export function MessageList({ messages, loading, onSampleFile, onExampleText }: 
               >
                 <p className="whitespace-pre-wrap">{msg.content}</p>
                 {msg.redacted && <RedactedMessageNote message={msg} />}
-                {msg.role === "assistant" && msg.via === "demo" && (
-                  <p className="mt-2 text-[10px] uppercase tracking-wider font-mono text-[var(--color-text-secondary)]/70">
-                    Demo assistant - add an API key for live AI replies
-                  </p>
-                )}
+                {msg.role === "assistant" && msg.via && <AssistantSource via={msg.via} />}
               </div>
             </motion.div>
           ))}
