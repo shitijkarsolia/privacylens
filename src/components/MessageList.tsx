@@ -2,6 +2,7 @@ import { useRef, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Message } from "../types";
 import { assetUrl } from "../lib/routes";
+import { MarkdownMessage } from "./MarkdownMessage";
 
 const SAMPLE_FILES = [
   { name: "resume-emily-chen.pdf", label: "Resume PDF", type: "pdf" },
@@ -305,7 +306,11 @@ export function MessageList({ messages, loading, onSampleFile, onExampleText }: 
                     : "bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text)] rounded-bl-md shadow-[0_2px_8px_rgba(0,0,0,0.04)]"
                 }`}
               >
-                <p className="whitespace-pre-wrap">{msg.content}</p>
+                {msg.role === "assistant" ? (
+                  <MarkdownMessage content={msg.content} />
+                ) : (
+                  <p className="whitespace-pre-wrap">{msg.content}</p>
+                )}
                 {msg.redacted && <RedactedMessageNote message={msg} />}
                 {msg.role === "assistant" && msg.via && <AssistantSource via={msg.via} />}
               </div>
